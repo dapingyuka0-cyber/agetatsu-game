@@ -94,6 +94,7 @@ export function grade(s){
   clamp(1-s.damage-burn*.3)*clamp(core/.8)*(1-black*.9)
  ];
  const beginner=beginnerFoods.has(s.id);
+ const chicken=s.id==='chicken';
  if(beginner&&!look.scoreBurnt){
   values[2]=clamp(1-s.damage*.65-burn*.25)*clamp(look.meanHeat/.65)*(1-black*.9);
   values[3]=1;
@@ -103,9 +104,10 @@ export function grade(s){
  const rows=['揚げ色','火の通り','衣の仕上がり','揚げムラ','食材の状態'].map((name,i)=>({name,value:Math.round(values[i]*weights[i]),max:weights[i]}));
  // Pumpkin alone allows a slightly wider handling window; doneness and burn stay visual.
  const forgiving=s.id==='pumpkin';
+ const balanceTolerance=forgiving?.45:chicken?.42:.35;
  const tempPrecision=s.temperatureTime?clamp(s.preciseTime/s.temperatureTime):0;
- const surfacePrecision=clamp(1-Math.abs(look.faces[0].heat-look.faces[1].heat)/(forgiving?.45:.35));
- const technique=beginner&&!look.scoreBurnt?1:(beginner?1:forgiving?clamp(.65+.35*(s.goodFlip?1:0)):clamp(.25*tempPrecision+.45*surfacePrecision+.3*(s.goodFlip||s.goodTool?1:0)))*(1-burn)*(1-black);
+ const surfacePrecision=clamp(1-Math.abs(look.faces[0].heat-look.faces[1].heat)/balanceTolerance);
+ const technique=beginner&&!look.scoreBurnt?1:(beginner?1:forgiving?clamp(.65+.35*(s.goodFlip?1:0)):chicken?clamp(.28*tempPrecision+.47*surfacePrecision+.25*(s.goodFlip||s.goodTool?1:0)):clamp(.25*tempPrecision+.45*surfacePrecision+.3*(s.goodFlip||s.goodTool?1:0)))*(1-burn)*(1-black);
  rows.push({name:'調理の丁寧さ',value:Math.round(20*technique),max:20});
  // A golden shell cannot hide an undercooked centre in either rank or total.
  const total=rows.reduce((a,b)=>a+b.value,0),limit=core<.5?49:core<.92?79:100;
@@ -113,6 +115,7 @@ export function grade(s){
  const recipe=RECIPES[s.id],steps=recipe.steps.length,precision=tempPrecision,sides=surfacePrecision;
  const dishOperation=({onion:()=>s.stirs>0,chicken:()=>s.stirs>0,pumpkin:()=>!s.rupture,potato:()=>!s.rupture,pork:()=>s.thickness>=.8,gyoza:()=>Boolean(s.craft?.ready),churros:()=>Boolean(s.craft?.ready),bread:()=>true,shrimp:()=>true})[s.id]||(()=>true);
  const highSkill=(beginner?s.flips<=5:s.goodFlip&&(forgiving||s.goodTool))&&dishOperation()&&(!steps||s.prep===steps);
+ const chickenSkill=chicken&&(s.goodFlip||s.goodTool)&&dishOperation()&&(!steps||s.prep===steps);
  let raw=rows.reduce((a,b)=>a+b.value,0);
  const coreLimit=core<.5?49:core<.92?79:100;
  if(raw>coreLimit){const ratio=coreLimit/raw;for(const row of rows)row.value=Math.floor(row.value*ratio);}
@@ -120,10 +123,11 @@ export function grade(s){
  const tierScore=raw<=70?raw:raw<=85?70+(raw-70)*.6:raw<=92?79+(raw-85)*(10/7):raw<=97?89+(raw-92):raw<100?94+(raw-97)*2:99;
  let score=Math.min(99,Math.round(tierScore));
  // Crossing into the high-score tiers requires both a well-timed turn and a useful, food-specific tool action.
- if(score>=80&&!highSkill)score=Math.min(79,Math.round(70+9*clamp((tierScore-70)/29)-6*look.burn-5*look.uneven));
- if(score>=90&&(!beginner&&!forgiving&&(precision<.78||sides<.72)||s.flips>(beginner?5:3)))score=Math.min(89,Math.round(80+9*clamp((tierScore-80)/19)));
- if(score>=95&&(!beginner&&!forgiving&&(precision<.94||sides<.90||look.uneven>.1)||raw<98||look.underdone||look.scoreBurnt||s.damage>(beginner?.12:.015)||!beginner&&s.absorb>.025))score=Math.min(94,Math.round(90+4*clamp((tierScore-90)/9)));
- const perfect=raw===100&&bothSidesCooked&&(beginner||forgiving||(precision>=.995&&sides>=.98))&&highSkill&&(beginner||forgiving?s.flips<=(beginner?5:3):s.flips===1)&&s.drain>=(beginner?1:4)&&!look.underdone&&!look.scoreBurnt&&look.pale<(beginner?.35:.025)&&(beginner||forgiving||look.uneven<.025)&&s.damage<(beginner?.12:.005)&&(beginner||s.absorb<.01);
+ if(score>=80&&!highSkill){if(chickenSkill)score=Math.min(89,Math.round(80+9*clamp((tierScore-70)/29)));else score=Math.min(79,Math.round(70+9*clamp((tierScore-70)/29)-6*look.burn-5*look.uneven));}
+ if(score>=90&&(!beginner&&!forgiving&&(precision<(chicken?.70:.78)||sides<(chicken?.65:.72))||chicken&&!highSkill||s.flips>(beginner?5:3)))score=Math.min(89,Math.round(80+9*clamp((tierScore-80)/19)));
+ if(score>=95&&(!beginner&&!forgiving&&(precision<(chicken?.88:.94)||sides<(chicken?.82:.90)||look.uneven>(chicken?.14:.1))||raw<98||look.underdone||look.scoreBurnt||s.damage>(beginner?.12:.015)||!beginner&&s.absorb>.025))score=Math.min(94,Math.round(90+4*clamp((tierScore-90)/9)));
+ const perfectSkill=chicken?s.goodFlip&&s.goodTool&&dishOperation()&&(!steps||s.prep===steps):highSkill;
+ const perfect=raw===100&&bothSidesCooked&&(beginner||forgiving||(precision>=.995&&sides>=.98))&&perfectSkill&&(beginner||forgiving?s.flips<=(beginner?5:3):s.flips===1)&&s.drain>=(beginner?1:4)&&!look.underdone&&!look.scoreBurnt&&look.pale<(beginner?.35:.025)&&(beginner||forgiving||look.uneven<.025)&&s.damage<(beginner?.12:.005)&&(beginner||s.absorb<.01);
  if(perfect)score=100;
  // These five dishes reward a cooked centre and an appetizing shell all the way
  // through dark brown. The shared color ramp still penalizes genuinely black food.
