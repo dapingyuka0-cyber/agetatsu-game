@@ -20,7 +20,11 @@ R2未設定でもゲームの調理・採点、端末への共有画像の保存
 
 公開先URLは閲覧中のサイトから自動判定します。旧サイトやプレビューのURLを新しい公開URLとして埋め込みません。カスタムドメインに変更した場合、そのドメインから開いて共有してください。共有結果のリンクカードは保存時のドメインを参照します。
 
-**必要なAPIキー・秘密鍵・ログイン情報はありません。** Cloudflareのアカウント連携とR2 bindingはZIP内では設定できないため、管理画面で設定してください。累計人数など、別のサーバー機能がこの構成で動くという保証はありません。
+**必要なAPIキー・秘密鍵・ログイン情報はありません。** Cloudflareのアカウント連携とR2 bindingはソース内では設定できないため、管理画面で設定してください。
+
+## 全プレイヤー共通の累計調理品数
+
+Pages Functions の `/api/cooked-count` は Cloudflare D1 の `COOKED_DB` binding を使います。既存の Pages プロジェクト `agetatsu-game` の production 環境には、D1 `agetatsu-cooked-dishes` を binding 済みです。別環境で公開する場合は、D1 に `cooked_results(id TEXT PRIMARY KEY, completed_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)`、`cooked_total(singleton INTEGER PRIMARY KEY CHECK(singleton=1), total INTEGER NOT NULL DEFAULT 0)` を作成し、`(1,0)` を挿入して、`cooked_results` の INSERT 後に `cooked_total.total` を 1 増やすトリガーを追加してください。同じ結果IDの再送は主キーで除外されます。production の既存データベースやカウントを再作成・初期化しないでください。
 
 ## 主な構成
 
