@@ -73,6 +73,12 @@ export class KitchenAudio{
  }
  test(){if(!this.ctx||this.ctx.state!=='running')return;this.testUntil=this.ctx.currentTime+2.5;this.effect('drop');this.effect('plate');}
  effect(type){type=({move:'flip',stir:'flip',baste:'drop',check:'lift',sugar:'prep',cocoa:'prep',kinako:'prep',matcha:'prep'})[type]||type;if(!this.ctx||this.ctx.state!=='running'||!this.buffer)return;const c=this.ctx,t=c.currentTime;
+  if(type==='burnWarning'||type==='burnCritical'){
+   if(t<(this.warningUntil||0))return;
+   const critical=type==='burnCritical',notes=critical?[410,340,410]:[370,310];
+   this.warningUntil=t+(critical?.62:.42);
+   notes.forEach((freq,i)=>{const at=t+i*.16,o=c.createOscillator(),g=c.createGain();o.type='triangle';o.frequency.setValueAtTime(freq,at);o.frequency.linearRampToValueAtTime(freq*.87,at+.13);g.gain.setValueAtTime(.001,at);g.gain.linearRampToValueAtTime(critical?.15:.10,at+.012);g.gain.exponentialRampToValueAtTime(.001,at+.14);o.connect(g).connect(this.master);o.start(at);o.stop(at+.15);o.onended=()=>{o.disconnect();g.disconnect();};});return;
+  }
   if(type==='grow'||type==='grown'){
    const o=c.createOscillator(),g=c.createGain();o.type='sine';
    if(type==='grow'){o.frequency.setValueAtTime(185,t);o.frequency.exponentialRampToValueAtTime(530,t+2.25);g.gain.setValueAtTime(.001,t);g.gain.linearRampToValueAtTime(.13,t+.5);g.gain.setValueAtTime(.13,t+1.9);g.gain.exponentialRampToValueAtTime(.001,t+2.3);}
