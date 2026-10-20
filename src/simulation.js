@@ -77,6 +77,7 @@ export function action(s,a){
  return false;
 }
 export function grade(s){
+ if(s.awardedGrade)return s.awardedGrade;
  const look=cookingLook(s),{pale,scoreBurn:burn,uneven,core}=look;
  // Onion rings can look deeply burnt before the shared gauge reaches its burn zone.
  const onionDarkBrown=s.id==='onion'&&Math.max(...look.faces.map(face=>face.burn))>=.75;
@@ -119,9 +120,9 @@ export function grade(s){
  const tierScore=raw<=70?raw:raw<=85?70+(raw-70)*.6:raw<=92?79+(raw-85)*(10/7):raw<=97?89+(raw-92):raw<100?94+(raw-97)*2:99;
  let score=Math.min(99,Math.round(tierScore));
  // Crossing into the high-score tiers requires both a well-timed turn and a useful, food-specific tool action.
- if(score>=80&&!highSkill)score=79;
- if(score>=90&&(!beginner&&!forgiving&&(precision<.78||sides<.72)||s.flips>(beginner?5:3)))score=89;
- if(score>=95&&(!beginner&&!forgiving&&(precision<.94||sides<.90||look.uneven>.1)||raw<98||look.underdone||look.scoreBurnt||s.damage>(beginner?.12:.015)||!beginner&&s.absorb>.025))score=94;
+ if(score>=80&&!highSkill)score=Math.min(79,Math.round(70+9*clamp((tierScore-70)/29)-6*look.burn-5*look.uneven));
+ if(score>=90&&(!beginner&&!forgiving&&(precision<.78||sides<.72)||s.flips>(beginner?5:3)))score=Math.min(89,Math.round(80+9*clamp((tierScore-80)/19)));
+ if(score>=95&&(!beginner&&!forgiving&&(precision<.94||sides<.90||look.uneven>.1)||raw<98||look.underdone||look.scoreBurnt||s.damage>(beginner?.12:.015)||!beginner&&s.absorb>.025))score=Math.min(94,Math.round(90+4*clamp((tierScore-90)/9)));
  const perfect=raw===100&&bothSidesCooked&&(beginner||forgiving||(precision>=.995&&sides>=.98))&&highSkill&&(beginner||forgiving?s.flips<=(beginner?5:3):s.flips===1)&&s.drain>=(beginner?1:4)&&!look.underdone&&!look.scoreBurnt&&look.pale<(beginner?.35:.025)&&(beginner||forgiving||look.uneven<.025)&&s.damage<(beginner?.12:.005)&&(beginner||s.absorb<.01);
  if(perfect)score=100;
  // These five dishes reward a cooked centre and an appetizing shell all the way
@@ -138,6 +139,7 @@ export function grade(s){
  if(look.scoreBurnt&&look.blackened)tips.push('真っ黒に焦げています。次はきつね色で取り出そう。');
  else if(look.scoreBurnt)tips.push('焦げの領域に入りました。少し早めに取り出そう。');
  else if(onionDarkBrown)tips.push('オニオンリングの衣が濃い焦げ茶色です。次は少し早めに取り出そう。');
+ else if(!easyPerfect&&score<100&&look.burn>.25)tips.push('衣の色が濃くなりました。次は少し早めに取り出そう。');
  else if(pale>.35)tips.push('まだ淡い揚げ色。もう少し揚げると香ばしくなります。');
  else tips.push('香ばしいきつね色に仕上がりました。');
  if(look.underdone)tips.push('中心まで火が足りません。表面の色だけでなく中も確認しよう。');
@@ -149,5 +151,34 @@ export function grade(s){
  if(s.rupture&&!easyPerfect)tips.push('衣が割れて、中身がこぼれました。');
  if(!beginner&&s.absorb>.25&&!easyPerfect)tips.push('低い温度で衣が油を吸っています。');
  if(s.drain<3&&!easyPerfect)tips.push('少し油を切ると、軽い仕上がりに。');
- return {score,rows,tips,look};
+ return {score,rows,tips,look,quality:tierScore-6*look.burn-5*look.uneven};
+}
+
+// Fix a piece's score when its result is first awarded. Only a genuine tie
+// between pieces in this batch moves a non-perfect score by the fewest points.
+export function awardGrade(s,pieces=[s]){
+ if(s.awardedGrade)return s.awardedGrade;
+ const result=grade(s);
+ if(result.score>0&&result.score<100&&pieces.length>1){
+  const awarded=pieces.filter(p=>p!==s&&p.awardedGrade?.score>0&&p.awardedGrade.score<100);
+  const used=new Set(awarded.map(p=>p.awardedGrade.score));
+  if(used.has(result.score)){
+   const original=result.score;
+   let lower=original-1,upper=original+1;
+   while(lower>=1&&used.has(lower))lower--;
+   while(upper<=99&&used.has(upper))upper++;
+   // A tie-break must never cross the food's existing upper scoring tier.
+   const tierTop=Math.min(original<=50?50:original<=79?79:original<=89?89:original<=94?94:99,result.look.core<.5?49:result.look.core<.92?79:99);
+   const betterThanTied=awarded.filter(p=>p.awardedGrade.score===original).every(p=>result.quality>p.awardedGrade.quality);
+   result.score=betterThanTied&&upper<=tierTop?upper:lower>=1?lower:upper<=tierTop?upper:original;
+   if(result.score!==original){
+    const factor=result.score/original,scaled=result.rows.map(row=>row.value*factor),values=scaled.map(Math.floor);
+    let remaining=result.score-values.reduce((sum,n)=>sum+n,0);
+    for(const i of scaled.map((value,i)=>({i,remainder:value-values[i]})).sort((a,b)=>b.remainder-a.remainder).map(x=>x.i)){if(!remaining)break;values[i]++;remaining--;}
+    result.rows.forEach((row,i)=>row.value=values[i]);
+   }
+  }
+ }
+ s.awardedGrade=result;
+ return result;
 }
