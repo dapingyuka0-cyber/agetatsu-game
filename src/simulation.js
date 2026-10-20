@@ -78,6 +78,8 @@ export function action(s,a){
 }
 export function grade(s){
  const look=cookingLook(s),{pale,scoreBurn:burn,uneven,core}=look;
+ // Onion rings can look deeply burnt before the shared gauge reaches its burn zone.
+ const onionDarkBrown=s.id==='onion'&&Math.max(...look.faces.map(face=>face.burn))>=.75;
  const zeroReason=s.exploded?'explosion':s.zeroReason|| (look.visiblyBlack?'black':s.time>=70?'time':!s.sideSeconds||s.sideSeconds.some(seconds=>seconds<10)?'raw':null);
  if(zeroReason)return {score:0,zeroReason,rows:['揚げ色','火の通り','衣の仕上がり','揚げムラ','食材の状態'].map(name=>({name,value:0,max:20})),tips:[{explosion:'炭になって大爆発！次の一皿に期待。',black:'真っ黒焦げです。',time:'70秒以上揚げました。',raw:'もっと焼こう！'}[zeroReason]],look};
  const black=look.scoreBurnt?look.black:0,dryness=look.scoreBurnt?look.dryness:0;
@@ -127,6 +129,7 @@ export function grade(s){
  const easyPerfect=gentleFoods.has(s.id)&&s.prep===steps&&core>=.92&&bothSidesCooked&&!look.scoreBurnt&&!s.exploded;
  if(easyPerfect){score=100;for(const row of rows)row.value=row.max;}
  if(paleSide>.35)score=Math.min(score,79);
+ if(onionDarkBrown)score=Math.min(score,50);
  // Keep the visible row totals in sync with the final awarded score.
  const rowTotal=rows.reduce((a,b)=>a+b.value,0);
  if(rowTotal!==score&&rowTotal>0){const scaled=rows.map(row=>row.value*score/rowTotal),floors=scaled.map(Math.floor);let remain=score-floors.reduce((a,b)=>a+b,0);const order=scaled.map((v,i)=>[v-floors[i],i]).sort((a,b)=>b[0]-a[0]);for(let i=0;i<order.length&&remain>0;i++,remain--)floors[order[i][1]]++;rows.forEach((row,i)=>row.value=floors[i]);}
@@ -134,6 +137,7 @@ export function grade(s){
  else if(!easyPerfect&&!beginner&&!forgiving&&precision<.78)tips.push('油温を食材の目安に合わせて保とう。');
  if(look.scoreBurnt&&look.blackened)tips.push('真っ黒に焦げています。次はきつね色で取り出そう。');
  else if(look.scoreBurnt)tips.push('焦げの領域に入りました。少し早めに取り出そう。');
+ else if(onionDarkBrown)tips.push('オニオンリングの衣が濃い焦げ茶色です。次は少し早めに取り出そう。');
  else if(pale>.35)tips.push('まだ淡い揚げ色。もう少し揚げると香ばしくなります。');
  else tips.push('香ばしいきつね色に仕上がりました。');
  if(look.underdone)tips.push('中心まで火が足りません。表面の色だけでなく中も確認しよう。');
