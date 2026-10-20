@@ -12,8 +12,8 @@ export async function countRoutes(request,env){
    const {id}=await request.json();
    if(typeof id!=='string'||!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id))return reply({error:'Invalid result ID'},400);
    // A unique result ID makes retries and simultaneous duplicate POSTs idempotent.
-   const inserted=await env.COOKED_DB.prepare('INSERT OR IGNORE INTO cooked_results(id) VALUES (?)').bind(id).run();
-   added=inserted.meta.changes===1;
+   const inserted=await env.COOKED_DB.prepare('INSERT INTO cooked_results(id) VALUES (?) ON CONFLICT(id) DO NOTHING RETURNING id').bind(id).all();
+   added=inserted.results.length===1;
   }
   const row=await env.COOKED_DB.prepare('SELECT total FROM cooked_total WHERE singleton=1').first();
   return reply({count:row.total,added});
