@@ -1,0 +1,25 @@
+{
+  "name": "agebiyori",
+  "version": "0.9.0",
+  "description": "揚げ物の達人 — 目指せ、揚げ物マスター！",
+  "main": "index.js",
+  "scripts": {
+    "build": "node build-server.mjs",
+    "build:pages": "node build-pages.mjs",
+    "build:static": "node build.mjs",
+    "test": "node --test test/*.test.js",
+    "test:shaders": "python3 test/shader-compile.py"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "esbuild": "0.24.2",
+    "three": "0.170.0"
+  },
+  "private": true,
+  "devDependencies": {
+    "linkedom": "^0.18.12"
+  }
+}

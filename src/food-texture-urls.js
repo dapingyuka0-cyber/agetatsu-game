@@ -1,0 +1,23 @@
+import shrimp_base from './assets/foods/shrimp-base.png';
+import shrimp_normal from './assets/foods/shrimp-normal.png';
+import shrimp_roughness from './assets/foods/shrimp-roughness.png';
+import pork_base from './assets/foods/pork-base.png';
+import pork_normal from './assets/foods/pork-normal.png';
+import pork_roughness from './assets/foods/pork-roughness.png';
+import pumpkin_base from './assets/foods/pumpkin-base.png';
+import pumpkin_normal from './assets/foods/pumpkin-normal.png';
+import pumpkin_roughness from './assets/foods/pumpkin-roughness.png';
+import potato_base from './assets/foods/potato-base.png';
+import potato_normal from './assets/foods/potato-normal.png';
+import potato_roughness from './assets/foods/potato-roughness.png';
+import onion_base from './assets/foods/onion-base.png';
+import onion_normal from './assets/foods/onion-normal.png';
+import onion_roughness from './assets/foods/onion-roughness.png';
+import chicken_base from './assets/foods/chicken-base.png';
+import chicken_normal from './assets/foods/chicken-normal.png';
+import chicken_roughness from './assets/foods/chicken-roughness.png';
+import bread_base from './assets/foods/bread-base.png';
+import bread_normal from './assets/foods/bread-normal.png';
+import bread_roughness from './assets/foods/bread-roughness.png';
+export const foodTextureURLs={shrimp:[shrimp_base,shrimp_normal,shrimp_roughness],pork:[pork_base,pork_normal,pork_roughness],pumpkin:[pumpkin_base,pumpkin_normal,pumpkin_roughness],potato:[potato_base,potato_normal,potato_roughness],onion:[onion_base,onion_normal,onion_roughness],chicken:[chicken_base,chicken_normal,chicken_roughness],bread:[bread_base,bread_normal,bread_roughness]};
+
