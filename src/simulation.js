@@ -81,7 +81,8 @@ export function grade(s){
  const look=cookingLook(s),{pale,scoreBurn:burn,uneven,core}=look;
  // Onion rings can look deeply burnt before the shared gauge reaches its burn zone.
  const onionDarkBrown=s.id==='onion'&&Math.max(...look.faces.map(face=>face.burn))>=.75;
- const zeroReason=s.exploded?'explosion':s.zeroReason|| (look.visiblyBlack?'black':s.time>=70?'time':!s.sideSeconds||s.sideSeconds.some(seconds=>seconds<10)?'raw':null);
+ const undercookedTime=s.id==='bread'?(!s.sideSeconds||s.sideSeconds.reduce((total,seconds)=>total+seconds,0)<10):(!s.sideSeconds||s.sideSeconds.some(seconds=>seconds<10));
+ const zeroReason=s.exploded?'explosion':s.zeroReason|| (look.visiblyBlack?'black':s.time>=70?'time':undercookedTime?'raw':null);
  if(zeroReason)return {score:0,zeroReason,rows:['揚げ色','火の通り','衣の仕上がり','揚げムラ','食材の状態'].map(name=>({name,value:0,max:20})),tips:[{explosion:'炭になって大爆発！次の一皿に期待。',black:'真っ黒焦げです。',time:'70秒以上揚げました。',raw:'もっと焼こう！'}[zeroReason]],look};
  const black=look.scoreBurnt?look.black:0,dryness=look.scoreBurnt?look.dryness:0;
  const paleSide=Math.max(...look.faces.map(face=>face.pale));
