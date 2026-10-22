@@ -1,21 +1,28 @@
 import {cookingLook} from './cooking-look.js';
-import {gentleFoods} from './simulation.js';
-export const BLAST_WINDUP=7,BLAST_DURATION=11.35,GROW_WINDUP=.5,GROW_EXPAND=1.8,GROW_DURATION=3;
+import {RECIPES} from './simulation.js';
+export const BLAST_WINDUP=.65,BLAST_DURATION=5,GROW_WINDUP=.5,GROW_EXPAND=1.8,GROW_DURATION=3;
+export const GENTLE_BLAST_WINDUP=7;
 export const growthProgress=age=>{const t=Math.max(0,Math.min(1,(age-GROW_WINDUP)/GROW_EXPAND));return t*t*(3-2*t);};
 export class Comedy{
  constructor(random=Math.random){this.random=random;this.active=null;this.queue=[];this.growthRolled=false;this.danceRolled=false;this.shrimpEvent=null;this.onStart=()=>{};this.onEnd=()=>{};}
  reset(newRound=false){this.active=null;this.queue.length=0;if(newRound){this.growthRolled=false;this.danceRolled=false;this.shrimpEvent=null;}}
  rollShrimp(){if(this.shrimpEvent===null){const r=this.random();this.shrimpEvent=r<.20?'grow':r<.40?'dance':'none';}return this.shrimpEvent;}
- enqueue(type,p,score=0){this.queue.push({type,p,score,age:0,windup:BLAST_WINDUP,duration:type==='blast'?BLAST_DURATION:({grow:GROW_DURATION,dance:3,spark:1.6})[type]});}
+ enqueue(type,p,score=0){const windup=type==='blast'?GENTLE_BLAST_WINDUP:BLAST_WINDUP;this.queue.push({type,p,score,age:0,windup,duration:type==='blast'?windup+BLAST_DURATION:({grow:GROW_DURATION,dance:3,spark:1.6})[type]});}
  tick(pieces,dt){
-  if(this.active){const e=this.active;if(e.type==='blast'&&e.age<e.windup&&e.p.stage!=='fry'){e.duration=0;e.p.blastQueued=false;}e.age+=dt;if(e.type==='blast'&&e.age>=e.windup&&e.duration>0&&!e.p.exploded){e.p.exploded=true;this.onStart({...e,type:'boom'});}if(e.type==='grow'&&e.age>=GROW_WINDUP+GROW_EXPAND&&!e.completed){e.completed=true;e.p.giant=true;this.onStart({...e,type:'grown'});}if(e.age>=e.duration){this.active=null;this.onEnd(e);}}
+  if(this.active){const e=this.active;if(e.type==='blast'&&!e.p.exploded&&e.p.stage!=='fry'){e.duration=0;e.p.blastQueued=false;}e.age+=dt;if(e.type==='blast'&&e.age>=e.windup&&e.duration>0&&!e.p.exploded){if(RECIPES[e.p.id].difficulty==='かんたん'||(e.p.blastProgress||0)>=65){e.p.exploded=true;e.duration=e.age+BLAST_DURATION;this.onStart({...e,type:'boom'});}else{e.windup=e.age+dt;e.duration=e.windup+BLAST_DURATION;}}if(e.type==='grow'&&e.age>=GROW_WINDUP+GROW_EXPAND&&!e.completed){e.completed=true;e.p.giant=true;this.onStart({...e,type:'grown'});}if(e.age>=e.duration){this.active=null;this.onEnd(e);}}
   if(this.active?.type==='grow')return;
   for(const p of pieces){
    if(p.stage==='fry'&&!p.checking&&!p.craft?.drawing&&!p.exploded){
-    const look=cookingLook(p);
-    const charred=gentleFoods.has(p.id)?look.blackened:look.visiblyBlack;
-    p.charSeconds=charred?(p.charSeconds||0)+dt:0;
-    if(charred&&!p.blastQueued){p.blastQueued=true;this.enqueue('blast',p);}
+    // Start the warning seven real frying seconds before the projected limit.
+    // Each piece has its own integrated thermal progress and can be rescued.
+    const easy=RECIPES[p.id].difficulty==='かんたん';
+    if(easy&&cookingLook(p).blackened&&p.easyBlackenedSince===undefined)p.easyBlackenedSince=p.time;
+    // Easy dishes color three seconds sooner, but keep their previous blast time.
+    const thermalWarning=(p.blastProgress||0)+7*(p.blastRate||1)>=65;
+    // The folded gyoza can expose a still-golden face at the thermal warning.
+    // Wait until the face the player sees has actually begun to turn black.
+    const warning=easy?p.easyBlackenedSince!==undefined&&p.time-p.easyBlackenedSince>=3:p.id==='gyoza'?thermalWarning&&cookingLook(p).faces[1-p.side].black>=.18:thermalWarning;
+    if(warning&&!p.blastQueued){p.blastQueued=true;this.enqueue('blast',p);}
     if(p.id==='shrimp'&&p.time>3&&!this.growthRolled){this.growthRolled=true;p.growthRolled=true;if(this.rollShrimp()==='grow')this.enqueue('grow',p);}
    }
   }

@@ -3,7 +3,7 @@ import {newChurro,churroGesture} from './churro-flow.js';
 export const isCraft=id=>id==='gyoza'||id==='churros';
 export const demoPath=()=>Array.from({length:45},(_,i)=>({x:-1+i/22,z:.18*Math.sin(i/44*Math.PI)}));
 export const newCraft=id=>id==='gyoza'?{filling:0,fold:0,pleats:[],ready:false,drag:null,tool:{x:-1.3,z:0}}:newChurro();
-export function craftHint(s){const c=s.craft;if(s.id==='churros')return s.stage==='plate'?'チュロスの上をなぞって、砂糖をまぶそう。':c.ready?'絞り出し完了。そのまま好みの色まで揚げよう。':c.mode==='template'?'好きな型をタップ。そのまま油で揚がります。':'鍋の上をドラッグして絞る。離すとカット' ;return !c.filling?'左のスプーンを皮の中央へドラッグ':c.fold<1?'皮の奥から手前へ、ゆっくりスワイプ':c.pleats.length<5?`縁の目印をタップしてひだを作る（${c.pleats.length}/5）`:'包めた！油に入れよう。';}
+export function craftHint(s){const c=s.craft;if(s.id==='churros')return s.stage==='plate'?'チュロスの上をなぞって、砂糖をまぶそう。':c.ready?'絞り出し完了。そのまま好みの色まで揚げよう。':c.mode==='template'?'好きな型をタップ。そのまま油で揚がります。':'鍋の上をドラッグして絞る。離すとカット' ;return !c.filling?'左のスプーンを押さえ、皮の真ん中まで運ぼう':c.fold<1?'皮の奥側のふちから手前へ、指でなぞって折ろう':c.pleats.length<5?`光る目印を1つずつタップ（${c.pleats.length}/5）`:'包めた！下の「投入」で油へ。';}
 export function pleatPoint(i){const a=Math.PI*(.18+i*.16);return {x:.92*Math.cos(a),z:.70*Math.sin(a)*Math.cos(.5)-.16};}
 const dist=(a,b)=>Math.hypot(a.x-b.x,a.z-b.z);
 export function craftGesture(s,type,p){
