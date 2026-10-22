@@ -251,7 +251,7 @@ export function kitchen(canvas){
   blast.update(menu?null:event,blastOrigin,false,camera,!!reducedMotion?.matches);
   renderer.render(scene,camera);
   // Capture one real frame while this round's existing smoke is active. Never replay it.
-  if(!menu&&event?.type==='blast'&&event.p.exploded&&event.age>=event.windup+.17&&blastShotDish!==event.p){
+  if(!menu&&event?.type==='blast'&&event.p.exploded&&event.age>=.82&&blastShotDish!==event.p){
    blastShotDish=event.p;
    try{const shotCamera=camera.clone();shotCamera.aspect=1080/760;shotCamera.updateProjectionMatrix();blastShot=captureRender(renderer,scene,shotCamera);}catch(error){console.warn('爆発画像を取得できませんでした',error);}
   }

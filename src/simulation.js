@@ -40,7 +40,7 @@ export function advance(s,dt){
   s.time+=dt;s.sideSeconds[s.side]+=dt;s.temperatureTime=(s.temperatureTime||0)+dt;if(Math.abs(s.oil-r.temp)<=r.tolerance)s.preciseTime=(s.preciseTime||0)+dt;
   // Equivalent seconds at 170°C. Integrating each frame retains heat already
   // accumulated when the player changes the oil temperature during a fry.
-  const blastRate=Math.exp((s.target-170)/(s.id==='churros'?180:45));
+  const blastRate=Math.exp((s.target-170)/(s.id==='churros'?270:s.id==='chicken'?230:45));
   s.blastProgress=(s.blastProgress||0)+dt*blastRate;
   s.blastRate=blastRate;
   const h=dt/r.time*tempFactor;
@@ -57,14 +57,14 @@ export function advance(s,dt){
   // continuous while the existing material spreads dark patches over crust.
   const easy=r.difficulty==='かんたん'||r.difficulty==='やさしい';
   if(!easy){
-   const onset=s.id==='churros'?52:Math.min(52,r.time+4);
-   const darkening=clamp((s.blastProgress-onset)/(65-onset));
+   const onset=s.id==='churros'?35:Math.min(52,r.time+4);
+   const darkening=clamp((s.blastProgress-onset)/((s.id==='churros'?80:65)-onset));
    s.blastDarkening=Math.max(s.blastDarkening||0,darkening);
    const ceiling=1.55+1.45*s.blastDarkening;
    // Do not force both faces to turn dark together halfway through the burn.
    // The lower face catches up progressively, reaching charcoal at the same
    // explosion threshold without a sudden all-over change near 55 seconds.
-   const floor=3*s.blastDarkening*s.blastDarkening;
+   const floor=s.id==='churros'?2.7*Math.pow(s.blastDarkening,1.25):3*s.blastDarkening*s.blastDarkening;
    for(let i=0;i<2;i++)s.heat[i]=Math.max(floor,Math.min(s.heat[i],ceiling));
   }
   s.core+=dt/r.time*r.coreRate*(s.baste>0?1.12:1)*Math.max(.30,(s.oil-100)/70)/(s.thickness**1.65);
@@ -101,8 +101,6 @@ export function action(s,a){
 export function grade(s){
  if(s.awardedGrade)return s.awardedGrade;
  const look=cookingLook(s),{pale,scoreBurn:burn,uneven,core}=look;
- // Onion rings can look deeply burnt before the shared gauge reaches its burn zone.
- const onionDarkBrown=s.id==='onion'&&Math.max(...look.faces.map(face=>face.burn))>=.75;
  const hardRank=RECIPES[s.id].difficulty==='むずかしい';
  const undercookedTime=s.id==='bread'?(!s.sideSeconds||s.sideSeconds.reduce((total,seconds)=>total+seconds,0)<10):(!s.sideSeconds||s.sideSeconds.some(seconds=>seconds<10));
  const zeroReason=s.exploded?'explosion':s.zeroReason|| (look.visiblyBlack?'black':RECIPES[s.id].difficulty!=='かんたん'&&(s.blastProgress||0)>=70?'time':undercookedTime?'raw':null);
@@ -128,8 +126,8 @@ export function grade(s){
  // Pumpkin alone allows a slightly wider handling window; doneness and burn stay visual.
  const forgiving=s.id==='pumpkin';
  const tempPrecision=s.temperatureTime?clamp(s.preciseTime/s.temperatureTime):0;
- const surfacePrecision=clamp(1-Math.abs(look.faces[0].heat-look.faces[1].heat)/(forgiving?.45:s.id==='chicken'?.42:.35));
- const technique=beginner&&!look.scoreBurnt?1:(beginner?1:forgiving?clamp(.65+.35*(s.goodFlip?1:0)):s.id==='chicken'?clamp(.28*tempPrecision+.47*surfacePrecision+.25*(s.goodFlip||s.goodTool?1:0)):clamp(.25*tempPrecision+.45*surfacePrecision+.3*(s.goodFlip||s.goodTool?1:0)))*(1-burn)*(1-black);
+ const surfacePrecision=clamp(1-Math.abs(look.faces[0].heat-look.faces[1].heat)/(forgiving?.45:.35));
+ const technique=beginner&&!look.scoreBurnt?1:(beginner?1:forgiving?clamp(.65+.35*(s.goodFlip?1:0)):clamp(.25*tempPrecision+.45*surfacePrecision+.3*(s.goodFlip||s.goodTool?1:0)))*(1-burn)*(1-black);
  rows.push({name:'調理の丁寧さ',value:Math.round(20*technique),max:20});
  // A golden shell cannot hide an undercooked centre in either rank or total.
  const total=rows.reduce((a,b)=>a+b.value,0),limit=core<.5?49:core<.92?79:100;
@@ -139,7 +137,6 @@ export function grade(s){
  const normalRank=recipe.difficulty==='ふつう';
  const dishOperation=({onion:()=>s.flips>=1,chicken:()=>s.stirs>0,pumpkin:()=>!s.rupture,potato:()=>!s.rupture,pork:()=>s.thickness>=.8,gyoza:()=>Boolean(s.craft?.ready),churros:()=>Boolean(s.craft?.ready),bread:()=>true,shrimp:()=>true})[s.id]||(()=>true);
  const highSkill=(s.id==='gyoza'?s.flips>=1:normalRank?s.flips>=1&&!s.rupture:easyRank?s.flips>=1:beginner?s.flips>=1:s.goodFlip&&(forgiving||s.goodTool))&&(normalRank||dishOperation())&&(!steps||s.prep===steps);
- const chickenSkill=s.id==='chicken'&&(s.goodFlip||s.goodTool)&&dishOperation()&&(!steps||s.prep===steps);
  let raw=rows.reduce((a,b)=>a+b.value,0);
  const coreLimit=core<.5?49:core<.92?79:100;
  if(raw>coreLimit){const ratio=coreLimit/raw;for(const row of rows)row.value=Math.floor(row.value*ratio);}
@@ -147,9 +144,9 @@ export function grade(s){
  const tierScore=raw<=70?raw:raw<=85?70+(raw-70)*.6:raw<=92?79+(raw-85)*(10/7):raw<=97?89+(raw-92):raw<100?94+(raw-97)*2:99;
  let score=Math.min(99,Math.round(tierScore));
  // Crossing into the high-score tiers requires both a well-timed turn and a useful, food-specific tool action.
- if(score>=80&&!highSkill){if(chickenSkill)score=Math.min(89,Math.round(80+9*clamp((tierScore-70)/29)));else score=79;}
- if(score>=90&&(!beginner&&!forgiving&&(precision<(s.id==='chicken'?.70:.78)||sides<(s.id==='chicken'?.65:.72))||s.id==='chicken'&&!highSkill))score=89;
- if(score>=95&&(!beginner&&!forgiving&&(precision<(s.id==='chicken'?.88:.94)||sides<(s.id==='chicken'?.82:.90)||look.uneven>(s.id==='chicken'?.14:.1))||raw<98||look.underdone||look.scoreBurnt||s.damage>(beginner?.12:.015)||hardRank&&s.absorb>.025))score=94;
+ if(score>=80&&!highSkill)score=79;
+ if(score>=90&&!beginner&&!forgiving&&(precision<.78||sides<.72))score=89;
+ if(score>=95&&(!beginner&&!forgiving&&(precision<.94||sides<.90||look.uneven>.1)||raw<98||look.underdone||look.scoreBurnt||s.damage>(beginner?.12:.015)||hardRank&&s.absorb>.025))score=94;
  const perfect=raw===100&&bothSidesCooked&&(beginner||forgiving||(precision>=.995&&sides>=.98))&&highSkill&&(!hardRank||s.drain>=2)&&!look.underdone&&!look.scoreBurnt&&look.pale<(beginner?.35:.025)&&(beginner||forgiving||look.uneven<.025)&&s.damage<(beginner?.12:.005)&&(!hardRank||s.absorb<.01);
  if(perfect)score=100;
  // These five dishes reward a cooked centre and an appetizing shell all the way
@@ -176,6 +173,15 @@ export function grade(s){
    score=Math.max(score,Math.max(90,Math.min(99,nearScore)));
   }
  }
+ // A well-browned potato croquette should not stay in the 80s solely for
+ // thermostat or turn precision when both surfaces and the centre are cooked.
+ if(s.id==='potato'&&s.prep===steps&&s.flips>=1&&bothSidesCooked&&!look.underdone&&!look.scoreBurnt&&!s.rupture&&s.damage<=.15){
+  const heats=look.faces.map(face=>face.heat),light=Math.min(...heats),dark=Math.max(...heats),gap=dark-light;
+  if(light>=.9&&dark<=2.05&&gap<=.38){
+   const finish=Math.max(90,Math.min(94,Math.round(94-gap*10-s.damage*12)));
+   score=Math.max(score,finish);
+  }
+ }
  // Pork at a high oil temperature is a short, demanding window, not an
  // automatic 79-point cap. Judge its cooked shell and centre independently of
  // the thermostat; full marks still need two even faces and precise handling.
@@ -197,8 +203,18 @@ export function grade(s){
   score=Math.max(score,gyozaScore);
   if(score===100)for(const row of rows)row.value=row.max;
  }
+ // Keep forced zeroes and the exact perfect-score gate; soften ordinary
+ // deductions only for an unburnt finished piece.
+ if(s.id==='chicken'&&score>0&&score<100&&!look.scoreBurnt)score=Math.min(99,Math.round(100-(100-score)*.5));
+ if(s.id==='churros'&&score>0&&score<100&&!look.scoreBurnt)score=Math.min(99,Math.round(100-(100-score)*.7));
+ if(s.id==='churros'&&s.craft?.ready&&s.prep===steps&&s.flips>=1&&bothSidesCooked&&core>=.92&&!look.underdone&&!look.scoreBurnt&&!s.rupture){
+  const heats=look.faces.map(face=>face.heat),light=Math.min(...heats),dark=Math.max(...heats),gap=dark-light;
+  if(light>=.85&&dark<=1.85&&gap<=.5&&s.damage<=.16){
+   const finish=Math.max(90,Math.min(96,Math.round(96-gap*9-s.damage*20-Math.max(0,.98-light)*12-Math.max(0,dark-1.65)*15)));
+   score=Math.max(score,finish);
+  }
+ }
  if(paleSide>.35)score=Math.min(score,79);
- if(onionDarkBrown)score=Math.min(score,50);
  // Keep the visible row totals in sync with the final awarded score.
  const rowTotal=rows.reduce((a,b)=>a+b.value,0);
  if(rowTotal!==score&&rowTotal>0){const scaled=rows.map(row=>row.value*score/rowTotal),floors=scaled.map(Math.floor);let remain=score-floors.reduce((a,b)=>a+b,0);const order=scaled.map((v,i)=>[v-floors[i],i]).sort((a,b)=>b[0]-a[0]);for(let i=0;i<order.length&&remain>0;i++,remain--)floors[order[i][1]]++;rows.forEach((row,i)=>row.value=floors[i]);}
@@ -206,7 +222,6 @@ export function grade(s){
  if(!easyPerfect&&!beginner&&!forgiving&&s.id!=='gyoza'&&precision<.78&&!(s.id==='pork'&&s.target>=190))tips.push('油温を食材の目安に合わせて保とう。');
  if(look.scoreBurnt&&look.blackened)tips.push('真っ黒に焦げています。次はきつね色で取り出そう。');
  else if(look.scoreBurnt)tips.push('焦げの領域に入りました。少し早めに取り出そう。');
- else if(onionDarkBrown)tips.push('オニオンリングの衣が濃い焦げ茶色です。次は少し早めに取り出そう。');
  else if(pale>.35)tips.push('まだ淡い揚げ色。もう少し揚げると香ばしくなります。');
  else tips.push('香ばしいきつね色に仕上がりました。');
  if(look.underdone)tips.push('中心まで火が足りません。表面の色だけでなく中も確認しよう。');
@@ -220,31 +235,48 @@ export function grade(s){
  if(hardRank&&s.drain<2&&!easyPerfect)tips.push('金網で2秒ほど油を切ろう。');
  return {score,rows,tips,look,quality:tierScore-6*look.burn-5*look.uneven};
 }
-// Fix a piece's score when its result is first awarded. Only a genuine tie
-// between pieces in this batch moves a non-perfect score by the fewest points.
+// Fix each piece's score once. Similar chicken pieces can differ by up to two
+// points; zeroes and perfect scores retain their forced meanings.
 export function awardGrade(s,pieces=[s]){
  if(s.awardedGrade)return s.awardedGrade;
  const result=grade(s);
+ const baseScore=result.score;
  if(result.score>0&&result.score<100&&pieces.length>1){
   const awarded=pieces.filter(p=>p!==s&&p.awardedGrade?.score>0&&p.awardedGrade.score<100);
+  const original=result.score;
+  if(s.id==='chicken'&&awarded.some(p=>Math.abs(original-p.baseScore)<=3&&similarFinish(s,p))){
+   result.score=clamp(original+Math.floor(Math.random()*5)-2,1,99);
+  }
   const used=new Set(awarded.map(p=>p.awardedGrade.score));
   if(used.has(result.score)){
-   const original=result.score;
-   let lower=original-1,upper=original+1;
-   while(lower>=1&&used.has(lower))lower--;
-   while(upper<=99&&used.has(upper))upper++;
-   // A tie-break must never cross the food's existing upper scoring tier.
-   const tierTop=Math.min(original<=50?50:original<=79?79:original<=89?89:original<=94?94:99,result.look.core<.5?49:result.look.core<.92?79:99);
-   const betterThanTied=awarded.filter(p=>p.awardedGrade.score===original).every(p=>result.quality>p.awardedGrade.quality);
-   result.score=betterThanTied&&upper<=tierTop?upper:lower>=1?lower:upper<=tierTop?upper:original;
-   if(result.score!==original){
-    const factor=result.score/original,scaled=result.rows.map(row=>row.value*factor),values=scaled.map(Math.floor);
-    let remaining=result.score-values.reduce((sum,n)=>sum+n,0);
-    for(const i of scaled.map((value,i)=>({i,remainder:value-values[i]})).sort((a,b)=>b.remainder-a.remainder).map(x=>x.i)){if(!remaining)break;values[i]++;remaining--;}
-    result.rows.forEach((row,i)=>row.value=values[i]);
+   const tied=awarded.find(p=>p.awardedGrade.score===result.score);
+   const better=result.quality>tied.awardedGrade.quality;
+   const nearby=Array.from({length:5},(_,i)=>original+i-2)
+    .filter(candidate=>candidate>0&&candidate<100&&!used.has(candidate))
+    .sort((a,b)=>Math.abs(a-result.score)-Math.abs(b-result.score)||(better?b-a:a-b));
+   if(s.id==='chicken'&&nearby.length)result.score=nearby[0];
+   else{
+    let lower=original-1,upper=original+1;
+    while(lower>=1&&used.has(lower))lower--;
+    while(upper<=99&&used.has(upper))upper++;
+    const tierTop=Math.min(original<=50?50:original<=79?79:original<=89?89:original<=94?94:99,result.look.core<.5?49:result.look.core<.92?79:99);
+    result.score=better&&upper<=tierTop?upper:lower>=1?lower:upper<=tierTop?upper:original;
    }
   }
+  if(result.score!==original){
+   const factor=result.score/original,scaled=result.rows.map(row=>row.value*factor),values=scaled.map(Math.floor);
+   let remaining=result.score-values.reduce((sum,n)=>sum+n,0);
+   for(const i of scaled.map((value,i)=>({i,remainder:value-values[i]})).sort((a,b)=>b.remainder-a.remainder).map(x=>x.i)){if(!remaining)break;values[i]++;remaining--;}
+   result.rows.forEach((row,i)=>row.value=values[i]);
+  }
  }
+ s.baseScore=baseScore;
  s.awardedGrade=result;
  return result;
+}
+function similarFinish(a,b){
+ const x=cookingLook(a),y=cookingLook(b);
+ return Math.abs(x.meanHeat-y.meanHeat)<=.18
+  &&Math.abs(Math.abs(x.faces[0].heat-x.faces[1].heat)-Math.abs(y.faces[0].heat-y.faces[1].heat))<=.18
+  &&Math.abs(x.core-y.core)<=.18&&Math.abs(a.damage-b.damage)<=.08;
 }

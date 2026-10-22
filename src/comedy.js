@@ -21,7 +21,7 @@ export class Comedy{
     const thermalWarning=(p.blastProgress||0)+7*(p.blastRate||1)>=65;
     // The folded gyoza can expose a still-golden face at the thermal warning.
     // Wait until the face the player sees has actually begun to turn black.
-    const warning=easy?p.easyBlackenedSince!==undefined&&p.time-p.easyBlackenedSince>=3:p.id==='gyoza'?thermalWarning&&cookingLook(p).faces[1-p.side].black>=.18:thermalWarning;
+    const warning=easy?p.easyBlackenedSince!==undefined&&p.time-p.easyBlackenedSince>=3:p.id==='gyoza'?thermalWarning&&cookingLook(p).faces[1-p.side].black>=.18:p.id==='onion'?p.time>=50&&thermalWarning&&cookingLook(p).faces[1-p.side].black>=.18:p.id==='churros'?p.time>=60&&thermalWarning&&cookingLook(p).faces[1-p.side].heat>=1.9:thermalWarning;
     if(warning&&!p.blastQueued){p.blastQueued=true;this.enqueue('blast',p);}
     if(p.id==='shrimp'&&p.time>3&&!this.growthRolled){this.growthRolled=true;p.growthRolled=true;if(this.rollShrimp()==='grow')this.enqueue('grow',p);}
    }
