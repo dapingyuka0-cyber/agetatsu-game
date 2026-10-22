@@ -18,6 +18,8 @@ for(const [id,r] of Object.entries(RECIPES)){r.steps=id==='gyoza'?['具をのせ
 const skills={shrimp:['かんたん',28,6],pork:['むずかしい',38,4],pumpkin:['かんたん',32,7],potato:['ふつう',30,5],gyoza:['むずかしい',32,5],onion:['ふつう',25,5],chicken:['むずかしい',34,4],churros:['むずかしい',26,6],bread:['やさしい',24,8]};
 const beginnerFoods=new Set(['shrimp','pumpkin','bread']);
 export const gentleFoods=new Set(['pumpkin','potato','shrimp','bread','onion']);
+// Only the displayed easy/normal dishes get the tighter, color-led 100-point window.
+const balancedFoods=new Set(['pumpkin','potato','shrimp','onion']);
 for(const [id,[difficulty,time,tolerance]] of Object.entries(skills))Object.assign(RECIPES[id],{difficulty,time,tolerance});
 export const clamp=(v,a=0,b=1)=>Math.max(a,Math.min(b,v));
 export function fresh(id='shrimp',thickness=1){return {id,craft:isCraft(id)?newCraft(id):null,thickness,panX:0,panZ:0,lastFlip:-100,lastBaste:-100,preciseTime:0,temperatureTime:0,goodFlip:false,goodTool:false,stage:'prep',prep:0,coating:0,oil:175,target:175,time:0,sideSeconds:[0,0],core:0,heat:[0,0],side:0,flips:0,absorb:0,damage:0,drain:0,rupture:false,paused:false,checking:false,baste:0,agitation:0,toolCooldown:0,moves:0,stirs:0,sugar:0,toppings:{sugar:0,cocoa:0,kinako:0,matcha:0}};}
@@ -132,8 +134,16 @@ export function grade(s){
  if(perfect)score=100;
  // These five dishes reward a cooked centre and an appetizing shell all the way
  // through dark brown. The shared color ramp still penalizes genuinely black food.
- const easyPerfect=gentleFoods.has(s.id)&&s.prep===steps&&core>=.92&&bothSidesCooked&&!look.scoreBurnt&&!s.exploded;
+ const balanced=balancedFoods.has(s.id);
+ const heatFloor=s.id==='pumpkin'?.93:beginner?1.00:1.08,heatCeiling=beginner?1.45:1.55;
+ const idealColor=look.faces.every(face=>face.heat>=heatFloor&&face.heat<=heatCeiling);
+ const evenEnough=Math.abs(look.faces[0].heat-look.faces[1].heat)<=(beginner?.30:.25);
+ const preciseFinish=idealColor&&evenEnough&&s.flips>=1&&s.flips<=(beginner?3:2)&&!s.rupture&&s.damage<=(beginner?.12:.08);
+ const easyPerfect=gentleFoods.has(s.id)&&s.prep===steps&&core>=.92&&bothSidesCooked&&!look.scoreBurnt&&!s.exploded&&(!balanced||preciseFinish);
+ // Preserve accessible 70–80s; above 80, the same mistakes cost about 1.2x more.
+ if(balanced&&score>80&&score<100)score=80+Math.round((score-80)/1.2);
  if(easyPerfect){score=100;for(const row of rows)row.value=row.max;}
+ if(balanced&&!easyPerfect)score=Math.min(score,idealColor?99:look.faces.some(face=>face.heat>heatCeiling)?89:94);
  if(paleSide>.35)score=Math.min(score,79);
  if(onionDarkBrown)score=Math.min(score,50);
  // Churros alone: 1.4x normal deductions; keep perfect and forced-zero outcomes.
