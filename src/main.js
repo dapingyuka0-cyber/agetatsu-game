@@ -110,7 +110,23 @@ function menu(){resultImageShare.dispose();blastScreen.clear();$('#growNotice').
 let beforeModal=false;
 function showModal(content){if(!$('#modal').open){beforeModal=s.paused;s.paused=true;}$('#modalContent').innerHTML=content;if(!$('#modal').open)$('#modal').showModal();updateUI();}
 $('#modal').addEventListener('close',()=>{s.paused=beforeModal;updateUI();});
-function help(){showModal(`<h2>揚げ物の達人 · 遊び方</h2><ol><li>食材を選び、表示された下準備をします。粉や卵のボタンを押したら、食材の手前・奥・左右を指でなぞってまんべんなく付けます。パン粉はボタンを1回押すだけで全体に付きます。揚げパンはそのまま投入できます。餃子はスプーンを中央へドラッグし、奥から手前へ皮を折り、縁の5つの目印をタップ。チュロスは自由描きか4種類の型を選べます。自由描きでは鍋の真上で袋をドラッグして絞り、指を離すと切れて油に落ち、そのまま揚がります。</li><li>温度を決めて油に投入。色を見ながらひっくり返しましょう。</li><li>取り出し → 油切り → 盛り付け。</li></ol><p>餃子とチュロスの下準備は3D画面をなぞって操作します。チュロスは1回の調理につき1本だけ絞ります。押している間は長さの固定上限なく伸ばせて、指を離すと切れます。リザルトの「もう一度つくる」で新しい1本を作れます。完成後はチュロスをスワイプして砂糖をまぶせます。それ以外の場面ではドラッグで視点回転。全工程90〜120秒を目標に、食材ごとに難易度を設定。簡単な食材や慣れた操作では短く完成できます。鍋の位置や温度、返すタイミングで仕上がりが変わります。</p><p>トングで動かす・かき混ぜると加熱のムラが減ります。油をかけると上面にも火が入ります。「持ち上げて確認」中は加熱が止まり、油に戻すと続けられます。番号で1個を選び、衣づけ・投入・反転・取り出しを個別に操作します。待っている食材には火が入りません。「かき混ぜる」は油の中の食材を動かします。揚げパンは砂糖・ココア・きな粉・抹茶を何度でも重ねられます。</p><p>高温は焦げ、低温は油吸いの原因に。厚いトンカツは中心までゆっくり火が通ります。失敗してもゲームオーバーはありません。</p><p class="note">タブを離れると停止します。実際の食品の安全性や調理時間の目安には使えません。</p>`);}
+function help(){showModal(`<div class="help-guide">
+ <h2>遊び方</h2>
+ <p class="help-lead">まずはこの3ステップ。細かい操作は下から必要な分だけ開けます。</p>
+ <ol class="help-steps">
+  <li><span class="help-icon">🥣</span><div><b>食材を選んで準備</b><small>食材を選び、画面の案内どおりに下準備します。</small></div></li>
+  <li><span class="help-icon">🍳</span><div><b>油に入れて揚げる</b><small>温度を決めて投入。色を見ながら、頃合いで裏返します。</small></div></li>
+  <li><span class="help-icon">🍽️</span><div><b>取り出して結果を見る</b><small>取り出したら仕上げ。完成後に得点を確認しましょう。</small></div></li>
+ </ol>
+ <h3 class="help-subhead">操作ガイド</h3>
+ <details><summary>衣の付け方</summary><p>粉や卵は、食材の上を指でなぞって付けます。パン粉はボタンを1回押すと全体に付きます。</p></details>
+ <details><summary>揚げている間の操作</summary><ul><li><b>トングで動かす／かき混ぜる：</b>位置を変えて揚げムラを減らします。</li><li><b>油をかける：</b>上側にも火を通します。</li><li><b>持ち上げて確認：</b>色を見られます。確認中は加熱が止まります。</li><li><b>ひっくり返す：</b>裏面を揚げます。画面の色やゲージを目安にしましょう。</li></ul></details>
+ <details><summary>揚げ餃子を作る</summary><p>スプーンを皮の中央へドラッグして具をのせ、皮をスワイプで折ります。縁の5つの目印をタップしてひだを作ったら、油に入れます。</p></details>
+ <details><summary>チュロスを作る</summary><p><b>自由描き：</b>鍋の上で絞り袋をドラッグ。好きな形に描き、指を離すと切れます。1回の調理で1本、長さの固定上限はありません。</p><p><b>かんたん型作り：</b>ハート・星・ぐるぐる・リボンから選びます。揚げ終わったら、チュロスをなぞって砂糖をまぶせます。</p></details>
+ <details><summary>揚げパンを仕上げる</summary><p>下準備なしで油に入れます。完成後、砂糖・ココア・きな粉・抹茶をなぞって好きなだけ重ねられます。</p></details>
+ <details><summary>複数個を揚げる</summary><p>番号で食材を1個選び、その食材ごとに衣付け・投入・裏返し・取り出しを行います。油の中にない食材は揚がりません。</p></details>
+ <details><summary>視点と遊ぶときの注意</summary><p>調理操作をしていないときに3D画面をドラッグすると、視点を回せます。タブを離れると調理は停止します。</p><p class="note">ゲーム内の時間や手順は実際の調理と異なります。現実の調理には使わないでください。</p></details>
+</div>`);}
 function scoreSound(points){return points<=30?'fail':points>=100?'scorePerfect':points>=95?'scoreFanfare':points>=90?'scoreGrand':points>=80?'scoreBright':points>=31?'scoreClear':'fail';}
 function score(){if(!s.finishPlayed)comedy.reset();counter.complete(s);const activation=enableAudio();const dish=s,firstScore=!s.scorePlayed;s.scorePlayed=true;const g=awardGrade(s,batch.pieces);if(!s.exploded&&!s.finishPlayed)comedy.finish(s,g.score);if(!s.record)s.record=saveBest(s.id,g.score);showModal(resultCard(g,s));if(s.completionCount)$('#resultCount').textContent=`+1  累計 ${s.completionCount.toLocaleString('ja-JP')}品が揚がりました！`;bindResultShare($('#modalContent'),s,g);resultImageShare.bind($('#modalContent'),s,g,{ready:foodMapsReady,key:JSON.stringify([s.id,s.pieceIndex,g.score,s.exploded,s.lowComment,batch.pieces.map(p=>[p.stage,p.heat,p.toppings,p.craft?.revision,p.flips,p.giant])]),capture:()=>world?.captureResult(dish,batch)});activation.then(()=>{if(s!==dish||!$('#retryDish')||!firstScore)return;audio.update({...s,stage:'plate'});audio.effect(scoreSound(g.score));}).catch(()=>{});$('#retryDish').onclick=()=>{$('#modal').close();begin(s.id);};$('#nextDish').onclick=()=>{resultImageShare.dispose();$('#modal').close();if(s.id==='bread')world?.hideForSelection();s.paused=true;mode='select';render();};}
 
