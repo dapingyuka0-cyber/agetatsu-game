@@ -12,7 +12,7 @@ import {RECIPES} from './simulation.js';
 import {makeFood,surface,foodParts} from './food.js';
 export function kitchen(canvas){
  const renderer=new T.WebGLRenderer({canvas,antialias:true,alpha:false,powerPreference:'high-performance'});renderer.setPixelRatio(Math.min(devicePixelRatio,1.6));renderer.shadowMap.enabled=true;renderer.shadowMap.type=T.PCFSoftShadowMap;renderer.localClippingEnabled=true;renderer.toneMapping=T.ACESFilmicToneMapping;renderer.toneMappingExposure=.98;renderer.outputColorSpace=T.SRGBColorSpace;
- const scene=new T.Scene();scene.background=new T.Color('#d8b68b');scene.fog=new T.Fog('#d8b68b',19,42);
+ const scene=new T.Scene();scene.background=new T.Color('#d8b68b');const kitchenFog=new T.Fog('#d8b68b',19,42);scene.fog=kitchenFog;
  const pmrem=new T.PMREMGenerator(renderer);const env=pmrem.fromScene(new RoomEnvironment(),.05);scene.environment=env.texture;pmrem.dispose();
  // Decode the small baked atlas before cooking; no noise generation at impact.
  const blastTexture=new T.TextureLoader().load(smokeTextureURL);blastTexture.flipY=false;blastTexture.minFilter=blastTexture.magFilter=T.LinearFilter;blastTexture.generateMipmaps=false;
@@ -135,8 +135,8 @@ export function kitchen(canvas){
  let lastW=0,lastH=0,quality='high',yawDrag=false,lastX=0;
  let craftHandler=()=>false,craftPointer=null,activePointer=null,churroAtPan=false;
  function localPointer(e){const rect=canvas.getBoundingClientRect(),ray=new T.Raycaster();ray.setFromCamera(new T.Vector2((e.clientX-rect.left)/rect.width*2-1,-(e.clientY-rect.top)/rect.height*2+1),camera);const q=new T.Vector3();if(!ray.ray.intersectPlane((churroAtPan?new T.Plane(new T.Vector3(0,1,0),-.86):food.pointerPlane?.())||new T.Plane(new T.Vector3(0,1,0),-food.group.position.y-.08),q))return {x:99,z:99};if(churroAtPan)return {x:q.x,z:q.z};food.group.updateWorldMatrix(true,false);food.group.worldToLocal(q);return {x:q.x,z:q.z};}
- canvas.addEventListener('pointerdown',e=>{if(activePointer!==null)return;activePointer=e.pointerId;canvas.setPointerCapture(e.pointerId);e.preventDefault();if(craftHandler('down',localPointer(e))){craftPointer=e.pointerId;return;}yawDrag=true;lastX=downX=e.clientX;downY=e.clientY;});
- canvas.addEventListener('pointermove',e=>{if(e.pointerId!==activePointer)return;if(craftPointer===e.pointerId){e.preventDefault();for(const sample of e.getCoalescedEvents?.()||[e])craftHandler('move',localPointer(sample));return;}if(yawDrag){azimuth=Math.max(-.7,Math.min(.7,azimuth+(e.clientX-lastX)*.006));lastX=e.clientX;}});
+ canvas.addEventListener('pointerdown',e=>{if(activePointer!==null)return;activePointer=e.pointerId;canvas.setPointerCapture(e.pointerId);e.preventDefault();if(craftHandler('down',localPointer(e))){craftPointer=e.pointerId;return;}if(churroAtPan)return;yawDrag=true;lastX=downX=e.clientX;downY=e.clientY;});
+ canvas.addEventListener('pointermove',e=>{if(e.pointerId!==activePointer)return;if(craftPointer===e.pointerId){e.preventDefault();const samples=e.getCoalescedEvents?.();for(const sample of samples?.length?samples:[e])craftHandler('move',localPointer(sample));return;}if(yawDrag){azimuth=Math.max(-.7,Math.min(.7,azimuth+(e.clientX-lastX)*.006));lastX=e.clientX;}});
  function finishPointer(e,cancel=false){if(e.pointerId!==activePointer)return;activePointer=null;if(craftPointer===e.pointerId){craftHandler(cancel?'cancel':'up',localPointer(e));craftPointer=null;yawDrag=false;return;}yawDrag=false;if(cancel||Math.hypot(e.clientX-downX,e.clientY-downY)>6||views.length<2)return;const rect=canvas.getBoundingClientRect(),ray=new T.Raycaster();ray.setFromCamera(new T.Vector2((e.clientX-rect.left)/rect.width*2-1,-(e.clientY-rect.top)/rect.height*2+1),camera);const hits=ray.intersectObjects(views.map(v=>v.model.group),true);if(hits.length){let obj=hits[0].object;while(obj.parent&&!views.some(v=>v.model.group===obj))obj=obj.parent;const index=views.findIndex(v=>v.model.group===obj);if(index>=0)pickHandler(index);}}
  canvas.addEventListener('pointerup',e=>finishPointer(e));canvas.addEventListener('pointercancel',e=>finishPointer(e,true));
  function resize(){const w=Math.max(1,canvas.clientWidth),h=Math.max(1,canvas.clientHeight);if(w!==lastW||h!==lastH){lastW=w;lastH=h;renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();}}
@@ -181,7 +181,7 @@ export function kitchen(canvas){
     }else if(stage==='prep'||stage==='fry'){
      if(p.craft.drawing){m.group.rotation.set(0,0,0);m.group.position.set(0,.78,0);}
      else if(!specialEvent||specialEvent.type!=='blast'){
-      const margin=Math.max(0,OIL_RADIUS-DOUGH_RADIUS-(view.bounds?.originRadius||0)-.015),r=Math.hypot(m.group.position.x,m.group.position.z);
+      const margin=Math.max(0,OIL_RADIUS-(view.bounds?.doughRadius||DOUGH_RADIUS)-(view.bounds?.originRadius||0)-.015),r=Math.hypot(m.group.position.x,m.group.position.z);
       if(r>margin){m.group.position.x*=margin/r;m.group.position.z*=margin/r;}
       // Rotation is around the dough centre height, so flipping cannot push an edge out of the oil.
       m.group.position.z+=Math.sin(m.group.rotation.x)*.08;
@@ -192,7 +192,7 @@ export function kitchen(canvas){
  }
 
  function animate(s,time,dt,menu=false,batch=null,event=null){specialEvent=event;
-  resize();const widePan=!menu&&s.id==='churros',panScale=widePan?CHURRO_PAN_SCALE:1;leftStation.position.x=widePan?-STATION_SHIFT:0;rightStation.position.x=widePan?STATION_SHIFT:0;panGroup.scale.set(panScale,1,panScale);panGroup.rotation.y=widePan?Math.PI/4:0;const gyoza=s.id==='gyoza';cafePlate.visible=!gyoza&&['churros','bread'].includes(s.id);standardPlate.visible=!gyoza&&!cafePlate.visible;garnish.visible=!gyoza&&!cafePlate.visible;churroAtPan=!menu&&s.id==='churros'&&['prep','fry'].includes(s.stage);if(batch&&s.id==='churros')syncBatch(batch);if(views.length&&batch){selectedIndex=batch.selected;food=views[selectedIndex].model;}const frying=!menu&&batch?batch.pieces.map((p,i)=>({p,i})).filter(x=>x.p.stage==='fry'&&!x.p.checking&&!x.p.exploded):[];const playing=(frying.length>0||(!batch&&s.stage==='fry'&&!s.checking&&!s.exploded))&&!s.paused;const quantity=frying.length||1,amount=.78+Math.sqrt(quantity)*.18;const burst=Math.exp(-Math.max(0,time-dropTime)*1.2);const fryAge=frying.length?frying.reduce((a,x)=>a+x.p.time,0)/frying.length:s.time;const activityTarget=playing?Math.max(.22,1-fryAge/(RECIPES[s.id].time*2.8))*(s.oil-110)/70*amount+burst*.65:menu?.65:0;activitySmooth+=(activityTarget-activitySmooth)*(1-Math.exp(-dt*(activityTarget>activitySmooth?9:1.65)));const activity=activitySmooth;
+  resize();const widePan=!menu&&s.id==='churros',panScale=widePan?CHURRO_PAN_SCALE:1;scene.fog=widePan?null:kitchenFog;leftStation.position.x=widePan?-STATION_SHIFT:0;rightStation.position.x=widePan?STATION_SHIFT:0;panGroup.scale.set(panScale,1,panScale);panGroup.rotation.y=widePan?Math.PI/4:0;const gyoza=s.id==='gyoza';cafePlate.visible=!gyoza&&['churros','bread'].includes(s.id);standardPlate.visible=!gyoza&&!cafePlate.visible;garnish.visible=!gyoza&&!cafePlate.visible;churroAtPan=!menu&&s.id==='churros'&&['prep','fry'].includes(s.stage);if(batch&&s.id==='churros')syncBatch(batch);if(views.length&&batch){selectedIndex=batch.selected;food=views[selectedIndex].model;}const frying=!menu&&batch?batch.pieces.map((p,i)=>({p,i})).filter(x=>x.p.stage==='fry'&&!x.p.checking&&!x.p.exploded):[];const playing=(frying.length>0||(!batch&&s.stage==='fry'&&!s.checking&&!s.exploded))&&!s.paused;const quantity=frying.length||1,amount=.78+Math.sqrt(quantity)*.18;const burst=Math.exp(-Math.max(0,time-dropTime)*1.2);const fryAge=frying.length?frying.reduce((a,x)=>a+x.p.time,0)/frying.length:s.time;const activityTarget=playing?Math.max(.22,1-fryAge/(RECIPES[s.id].time*2.8))*(s.oil-110)/70*amount+burst*.65:menu?.65:0;activitySmooth+=(activityTarget-activitySmooth)*(1-Math.exp(-dt*(activityTarget>activitySmooth?9:1.65)));const activity=activitySmooth;
   oilUniform.time.value=time;oilUniform.activity.value=activity;oilUniform.drop.value=Math.max(Math.exp(-(time-dropTime)*1.8),Math.exp(-(time-flipTime)*2.4)*.65);
   const stage=menu?'fry':s.stage;
   let destination;
@@ -209,14 +209,15 @@ export function kitchen(canvas){
    for(let i=0;i<160;i++){const phase=(progress*1.6+i*.617)%1,q=surface(s.id,.04+((i*.311)%1)*.92,.02+((i*.173)%1)*.44,s.thickness,part);q.sub(new T.Vector3(anchor.x,anchor.y||0,anchor.z));q.applyMatrix4(food.group.matrixWorld);dummy.position.copy(q);dummy.position.y+=(1-phase)*.65;dummy.rotation.set(i*.31,progress*3+i,i*.17);dummy.scale.setScalar(wet?.65:step==='パン粉'?1.25:.55);dummy.updateMatrix();prepParticles.setMatrixAt(i,dummy.matrix);}prepParticles.instanceMatrix.needsUpdate=true;
   }
   const look=menu?new T.Vector3(0,.65,0):destination.clone();if(views.length>1){look.x=stage==='prep'?-3.8:stage==='fry'?0:3.5;look.z=stage==='prep'?.45:stage==='fry'?0:stage==='plate'?1.75:-1.2;}look.y=stage==='fry'?.72:.3;if(churroAtPan)look.set(0,.83,0);const overview=stage==='prep'&&frying.length>0&&s.id!=='churros';if(overview)look.set(-1.6,.6,0);if(churroAtPan)focus.copy(look);else if(craftPointer===null)focus.lerp(look,1-Math.exp(-dt*3));
-  const viewFov=churroAtPan?18:39;if(camera.fov!==viewFov){camera.fov=viewFov;camera.updateProjectionMatrix();}
-  const churroElevation=Math.max(.60,Math.min(.998,.90/camera.aspect));
+  const churroServing=!menu&&s.id==='churros'&&['drain','plate'].includes(stage);
+  const viewFov=churroAtPan?35:39;if(camera.fov!==viewFov){camera.fov=viewFov;camera.updateProjectionMatrix();}
+  const churroElevation=.995;
   const desiredWidth=churroAtPan?4*CHURRO_PAN_SCALE/.85:overview?8.1:stage==='fry'||(stage==='prep'&&s.id==='churros')?5.7:stage==='plate'?4.2:stage==='prep'?4.3:4.4;
-  const desiredHeight=churroAtPan?4.5*CHURRO_PAN_SCALE*churroElevation+1.1:stage==='fry'||(stage==='prep'&&s.id==='churros')?4.7:stage==='plate'?3.4:stage==='prep'?3.5:3.5;
+  const desiredHeight=churroAtPan?4.3*CHURRO_PAN_SCALE+.3:stage==='fry'||(stage==='prep'&&s.id==='churros')?4.7:stage==='plate'?3.4:stage==='prep'?3.5:3.5;
   const fitDistance=Math.max(desiredWidth/camera.aspect,desiredHeight)/(2*Math.tan(T.MathUtils.degToRad(camera.fov*.5)));
   let distance=fitDistance;const angle=.08+azimuth;
   if(!menu)distance*=1+.65*(specialEvent?.type==='grow'&&specialEvent.p===s?growthProgress(specialEvent.age):s.giant?1:0);
-  if(churroAtPan)camera.position.set(focus.x,focus.y+distance*churroElevation,focus.z+distance*Math.sqrt(1-churroElevation*churroElevation));else camera.position.set(focus.x+Math.sin(angle)*distance*.30,focus.y+distance*.80,focus.z+Math.cos(angle)*distance*.60);camera.lookAt(focus);
+  if(churroAtPan)camera.position.set(focus.x,focus.y+distance*churroElevation,focus.z+distance*Math.sqrt(1-churroElevation*churroElevation));else if(churroServing)camera.position.set(focus.x,focus.y+distance*.97,focus.z+distance*.243);else camera.position.set(focus.x+Math.sin(angle)*distance*.30,focus.y+distance*.80,focus.z+Math.cos(angle)*distance*.60);camera.lookAt(focus);
   flames.visible=stage==='fry'||frying.length>0;flameMat.opacity=.40+.13*Math.sin(time*17);
   for(let i=0;i<bubbleCount;i++){
    const b=bSeeds[i],cycle=(time*b.speed+b.phase)%1;

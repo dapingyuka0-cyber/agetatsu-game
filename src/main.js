@@ -1,7 +1,7 @@
 import {ResultImageShare} from './share-image.js';
 import {cookedCounter} from './cooked-count.js';
 import {bindResultShare} from './share-result.js';
-import {applyChurroTemplate} from './churro-flow.js';
+import {churroTemplate,applyChurroTemplate} from './churro-flow.js';
 import {makeBlastScreen} from './blast-screen.js';
 import {prepGesture} from './prep-gesture.js';
 import {saveBest} from './bests.js';
@@ -50,9 +50,9 @@ function save(){try{localStorage.setItem('agemaster-settings',JSON.stringify(set
 function toast(t){$('#toast').textContent=t;$('#toast').classList.add('show');clearTimeout(toast.timer);toast.timer=setTimeout(()=>$('#toast').classList.remove('show'),2600);}
 function enableAudio(effect){const p=audio.start();p.then(()=>{if(effect)audio.effect(effect);}).catch(()=>toast('音声を開始できませんでした。「音」から再開・テストできます。'));return p;}
 function temperature(){return `<div class="temperature"><div class="slider-column"><label for="temperature">${icon('thermometer')}油の設定温度</label><input id="temperature" class="range" type="range" min="140" max="200" step="5" value="${s.target}" aria-label="油温140度から200度"><div class="range-labels"><span>140</span><span>160</span><span>170</span><span>180</span><span>200</span></div></div><output><span id="target">${s.target}</span><small>℃</small></output></div>`;}
-function controls(){return `${s.stage==='fry'?`<div class="tool-actions">${[['move','トングで動かす'],['baste','油をかける'],['check',s.checking?'油に戻す':'持ち上げて確認'],['stir','かき混ぜる']].map(([a,label])=>`<button class="mini" data-act="${a}">${label}</button>`).join('')}</div>`:''}<div class="gauge-wrap"><div class="gauge" role="meter" aria-label="揚げ色" aria-valuemin="0" aria-valuemax="100" id="fryGauge"><span id="gaugePointer" class="gauge-pointer">▼</span></div><div class="gauge-labels"><span>生の衣</span><b>きつね色</b><span>焦げ</span></div></div><div class="actions">${[['drop','投入',s.stage==='prep'&&s.prep===RECIPES[s.id].steps.length&&!s.prepBusy],['flip','ひっくり返す',s.stage==='fry'&&!s.paused],['lift','取り出す',s.stage==='fry']].map(([a,label,enabled])=>`<button class="action-button ${enabled?'hot':''}" data-act="${a}" ${enabled?'':'disabled'}>${icon(a)}<span>${label}</span></button>`).join('')}</div>${temperature()}`;}
+function controls(){if(s.id==='churros'&&(s.stage==='prep'||s.craft.drawing))return temperature();return `${s.stage==='fry'?`<div class="tool-actions">${[['move','トングで動かす'],['baste','油をかける'],['check',s.checking?'油に戻す':'持ち上げて確認'],['stir','かき混ぜる']].map(([a,label])=>`<button class="mini" data-act="${a}">${label}</button>`).join('')}</div>`:''}<div class="gauge-wrap"><div class="gauge" role="meter" aria-label="揚げ色" aria-valuemin="0" aria-valuemax="100" id="fryGauge"><span id="gaugePointer" class="gauge-pointer">▼</span></div><div class="gauge-labels"><span>生の衣</span><b>きつね色</b><span>焦げ</span></div></div><div class="actions">${[['drop','投入',s.stage==='prep'&&s.prep===RECIPES[s.id].steps.length&&!s.prepBusy],['flip','ひっくり返す',s.stage==='fry'&&!s.paused],['lift','取り出す',s.stage==='fry']].map(([a,label,enabled])=>`<button class="action-button ${enabled?'hot':''}" data-act="${a}" ${enabled?'':'disabled'}>${icon(a)}<span>${label}</span></button>`).join('')}</div>${temperature()}`;}
 function render(){
- document.body.dataset.mode=mode;document.body.dataset.stage=s.stage;
+ document.body.dataset.mode=mode;document.body.dataset.stage=s.stage;document.body.dataset.food=s.id;document.body.dataset.churroWorkbench=String(mode==='cook'&&s.id==='churros'&&(s.stage==='prep'||s.craft.drawing));
  if(mode==='menu'){
   panel.innerHTML=`<div class="title-card"><h1 class="title-logo">揚げ物の達人</h1><p class="catch">〜目指せ、揚げ物マスター！〜</p><div class="tagline">今日もジュワッと！<br>🔥 サクサク？それとも真っ黒焦げ？</div><p class="community-count" aria-live="polite">${cookedTotal===null?'累計品数を読み込み中…':`累計 ${cookedTotal.toLocaleString('ja-JP')}品が揚がりました！`}</p><p>好きな食材を選んで、最高の揚げ加減を目指そう！</p><button class="primary" data-act="select">ゲームスタート ▶</button><div class="menu-tools"><button data-act="help">遊び方</button><button data-act="settings">設定・効果音テスト</button></div></div>`;
   $('#hint').textContent='好きな加減で、じゅわっと。';$('#sceneLabel').textContent='目指せ、揚げ物マスター！';return;
@@ -62,9 +62,9 @@ function render(){
  }
  if(explodedDish){panel.innerHTML=`<div class="stage-row"><span>爆発！ 調理終了・0点</span>${comedy.active?.type==='blast'?'':`<button class="primary" data-act="score">結果を見る →</button>`}</div>`;$('#sceneLabel').textContent=RECIPES[s.id].name+' · 調理終了';$('#hint').textContent='大爆発！ 今回は0点……。';updateUI();return;}
  const r=RECIPES[s.id];let body='';
- if(s.stage==='prep'){
+ if(s.stage==='prep'||(s.id==='churros'&&s.craft.drawing)){
   const labels=r.steps;body=isCraft(s.id)?`<div class="prep-row craft-row"><strong id="craftProgress">${s.id==='gyoza'?'包む工程':'絞り出し'}</strong></div>`:labels.length?`<div class="prep-row"><span>衣づけ</span>${labels.map((n,i)=>`<button class="prep-step ${s.prep>i?'done':s.prep===i?'next':''}" data-act="prep" ${s.prep===i&&!s.prepBusy?'':'disabled'}>${s.prep>i?'✓':i+1} ${n}</button>`).join('')}</div>`:'';
-  if(s.id==='churros'&&!s.craft.used)body=churroModes();
+  if(s.id==='churros')body=churroModes();
   $('#hint').textContent=s.prep<labels.length?`${labels[s.prep]}を、まんべんなく。`:'下準備完了。油に入れよう。';
  }else if(s.stage==='drain'){
   body=s.id==='gyoza'?`<div class="stage-row"><span>網の上で油切り <b id="drainTime">${Math.floor(s.drain)}</b> 秒</span><button class="primary" data-act="score">揚げ餃子を採点する →</button></div>`:`<div class="stage-row"><span>油切り <b id="drainTime">${Math.floor(s.drain)}</b> 秒</span><button class="primary" data-act="plate">お皿に盛り付ける →</button></div>`;$('#hint').textContent=s.id==='gyoza'?'金網の上で、パリッと油を切ろう。':'少し油を切ると、さっくり軽く。';
@@ -73,11 +73,18 @@ function render(){
  }
  if(s.stage==='plate'&&s.id==='churros')body+=`<div class="craft-row">🤍 チュロスの上をスワイプして砂糖をまぶす <b id="sugarCount"></b></div>`;panel.innerHTML=piecePicker()+body+controls();$('#sceneLabel').textContent=r.name+' · '+({prep:'下準備',fry:'調理中',drain:'油切り',plate:'完成'}[s.stage]);bindInputs();updateUI();
 }
-function churroModes(){return `<div class="churro-modes"><div class="mode-switch">${[['free','✏️ 自由に描く'],['template','💗 かんたん型作り']].map(([id,label])=>`<button data-churro-mode="${id}" aria-pressed="${s.craft.mode===id}">${label}</button>`).join('')}</div>${s.craft.mode==='template'?`<div class="churro-shapes">${[['heart','❤️','ハート'],['star','⭐','星'],['spiral','🌀','ぐるぐる'],['ribbon','🎀','リボン']].map(([id,icon,label])=>`<button data-churro-shape="${id}" aria-label="${label}の型"><span>${icon}</span>${label}</button>`).join('')}</div>`:''}</div>`;}
+function shapeIcon(id){
+ const path=churroTemplate(id),xs=path.map(p=>p.x),zs=path.map(p=>p.z),x=(Math.min(...xs)+Math.max(...xs))/2,z=(Math.min(...zs)+Math.max(...zs))/2,k=50/Math.max(Math.max(...xs)-Math.min(...xs),Math.max(...zs)-Math.min(...zs));
+ const d=path.map((p,i)=>`${i?'L':'M'}${(32+(p.x-x)*k).toFixed(1)},${(32+(p.z-z)*k).toFixed(1)}`).join(' ');
+ return `<svg viewBox="0 0 64 64" aria-hidden="true"><path d="${d}" fill="none" stroke="#a95316" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/><path d="${d}" fill="none" stroke="#efb357" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+}
+function churroModes(){const locked=s.craft.used;return `<div class="churro-modes"><div class="mode-switch">${[['free','✏️ 自由に描く'],['template','💗 かんたん型作り']].map(([id,label])=>`<button data-churro-mode="${id}" aria-pressed="${s.craft.mode===id}" ${locked?'disabled':''}>${label}</button>`).join('')}</div>${s.craft.mode==='template'?`<div class="churro-shapes">${[['heart','ハート'],['star','星'],['spiral','ぐるぐる'],['ribbon','リボン']].map(([id,label])=>`<button data-churro-shape="${id}" aria-label="${label}の型" ${locked?'disabled':''}>${shapeIcon(id)}<span>${label}</span></button>`).join('')}</div>`:'<p class="churro-instruction">ひと筆で自由に。指を離すと絞り終わり</p>'}</div>`;}
+
 function piecePicker(){const visible=s.id==='churros'?batch.pieces.map((p,i)=>({p,i})).slice(Math.max(0,batch.selected-7),Math.max(16,batch.selected+9)):batch.pieces.map((p,i)=>({p,i}));return batch.pieces.length<2?'':`<div class="piece-picker"><span>選択<br><b>${batch.selected+1}/${batch.pieces.length}</b></span><div class="piece-strip">${visible.map(({p,i})=>`<button data-piece="${i}" class="piece ${i===batch.selected?'selected':''} ${p.stage}" aria-label="${i+1}個目：${({prep:'下準備',fry:'調理中',drain:'油切り',plate:'完成'})[p.stage]}" aria-pressed="${i===batch.selected}"><b>${i+1}</b><small>${({prep:p.prepBusy?'衣づけ中':'準備',fry:p.checking?'確認中':'油の中',drain:'油切り',plate:'完成'})[p.stage]}</small></button>`).join('')}</div><button class="mini" data-act="next-piece">次の${s.id==='fries'?'1本':'1個'} ›</button></div>`;}
 function bindInputs(){const temp=$('#temperature');if(temp)temp.oninput=()=>{s.target=Number(temp.value);$('#target').textContent=s.target;};}
 function format(t){return String(Math.floor(t/60)).padStart(2,'0')+':'+String(Math.floor(t%60)).padStart(2,'0');}
 function updateUI(){
+ for(const button of panel.querySelectorAll('[data-churro-mode],[data-churro-shape]'))button.disabled=Boolean(s.craft?.used);
  const drop=panel.querySelector('[data-act="drop"]');if(drop)drop.disabled=s.id==='churros'||s.stage!=='prep'||s.prep!==RECIPES[s.id].steps.length||s.prepBusy>0;
  if(isCraft(s.id)){if($('#craftProgress'))$('#craftProgress').textContent=s.id==='churros'?(s.craft.ready?'形ができました':'指で絞り出す'):['① 具をのせる','② 皮を折る',`③ ひだ ${s.craft.pleats.length}/5`,'下準備完了'][s.prep];if($('#sugarCount'))$('#sugarCount').textContent=`${Math.round(s.sugar*100)}%`; }
  const prep=panel.querySelector('.prep-step.next');if(prep)prep.disabled=s.prepBusy>0;

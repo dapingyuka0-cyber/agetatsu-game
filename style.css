@@ -40,3 +40,33 @@ body[data-mode="select"] aside{max-height:58%;overflow-y:auto;overscroll-behavio
 .share-image-dialog{width:min(540px,calc(100vw - 20px));height:min(880px,calc(var(--vh,100dvh) - 20px));max-height:calc(var(--vh,100dvh) - 20px);max-width:calc(100vw - 20px);padding:12px 12px max(12px,env(safe-area-inset-bottom));border:2px solid #d5ab73;border-radius:22px;background:#fff0d9;color:#4b210b;overflow:hidden;box-shadow:0 15px 60px #27120266}
 .share-image-dialog[open]{display:flex;flex-direction:column;gap:8px}.share-image-dialog::backdrop{background:#2f180bbd}.share-image-head{flex:none;display:flex;align-items:center;justify-content:space-between;gap:8px}.share-image-head h2{font-size:17px;margin:0}.share-image-head p{font-size:10px;margin:3px 0 0;color:#87603c}.share-image-close{font-size:26px!important;width:40px;min-height:40px;padding:0!important;border-radius:50%}.share-image-art{min-height:0;flex:1;display:flex;justify-content:center;align-items:center;background:#e3cfaf;border-radius:13px;overflow:hidden}.share-image-preview{width:100%;height:100%;object-fit:contain;display:block}.share-image-loading{padding:20px;text-align:center;font-size:13px!important}.share-image-controls{flex:none;display:grid;gap:6px}.share-image-primary,.share-image-secondary{display:grid;grid-template-columns:1fr 1fr;gap:6px}.share-image-primary button{font-size:13px;min-height:44px;padding:6px 3px}.share-image-secondary button{font-size:11px;min-height:35px;padding:5px 2px}.share-image-dialog .share-image-status{font-size:11px;line-height:1.4;margin:0;min-height:30px}.share-image-dialog .share-image-note{font-size:9px;line-height:1.4;color:#82674b;margin:0}.share-image-dialog [hidden]{display:none!important}.share-image-text{width:100%;height:64px;resize:none;font:11px/1.4 inherit;padding:6px;background:#fffaf0;color:#4b210b;user-select:text;-webkit-user-select:text;border:1px solid #d5ab73;border-radius:8px}
 @media(max-height:700px){.share-image-dialog{gap:5px;padding-top:8px}.share-image-head h2{font-size:15px}.share-image-head p{display:none}.share-image-primary button{min-height:39px}.share-image-secondary button{min-height:32px}.share-image-dialog .share-image-note{font-size:8px}.result-share{gap:4px}#shareImage{min-height:36px}}
+
+/* Churros: a clear drawing surface, with all guidance outside the oil. */
+body[data-mode="cook"][data-food="churros"] .view{display:flex;flex-direction:column}
+body[data-mode="cook"][data-food="churros"] #scene{flex:1;min-height:0;height:0}
+body[data-mode="cook"][data-food="churros"] .scene-top{display:none}
+body[data-mode="cook"][data-food="churros"] .speech{position:static;order:-1;flex:none;max-width:none;height:44px;min-height:44px;overflow:hidden;margin:0;padding:5px 12px;border:0;border-bottom:1px solid #dfb780;border-radius:0;box-shadow:none;background:#fff0d9;text-align:center;font-size:11px;line-height:1.7}
+body[data-mode="cook"][data-food="churros"]:is([data-stage="prep"],[data-stage="fry"]) .camera{display:none}
+body[data-mode="cook"][data-food="churros"] aside{padding-top:7px}
+body[data-mode="cook"][data-food="churros"] .actions{grid-template-columns:1fr 1fr}
+body[data-mode="cook"][data-food="churros"] [data-act="drop"]{display:none}
+body[data-mode="cook"][data-food="churros"] .action-button{min-height:46px;flex-direction:row;gap:7px;font-size:12px}
+body[data-mode="cook"][data-food="churros"] .action-button .glyph{width:23px;height:23px}
+body[data-mode="cook"][data-food="churros"] .temperature{margin-top:7px;padding:5px 10px;grid-template-columns:1fr 65px;gap:10px}
+body[data-mode="cook"][data-food="churros"] .temperature output{font-size:23px;padding:4px 2px}
+body[data-mode="cook"][data-food="churros"] .temperature label{font-size:9px}
+body[data-mode="cook"][data-food="churros"] .gauge-wrap{height:30px;margin-bottom:3px}
+body[data-mode="cook"][data-food="churros"] .churro-modes{grid-column:1/-1;gap:7px;width:100%;max-width:650px;justify-self:center}
+.churro-modes .mode-switch{padding:3px;border:1px solid #d4a16e;border-radius:13px;background:#edd1a9}
+.churro-modes .mode-switch button{min-height:38px;border-radius:10px;font-size:12px;font-weight:800;background:transparent}
+.churro-modes .mode-switch [aria-pressed="true"]{background:linear-gradient(135deg,#b35c20,#87401c);color:#fff7e9;box-shadow:0 2px 4px #63300924}
+.churro-modes .mode-switch button:disabled{opacity:1;filter:none}
+.churro-instruction{margin:0;text-align:center;font-size:11px;line-height:20px;color:#714222}
+.churro-shapes{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}
+.churro-shapes button{display:flex;flex-direction:column;align-items:center;gap:2px;padding:5px 3px 6px;border:1px solid #d9a56e;border-radius:13px;background:linear-gradient(#fff9e9,#ffe6be);box-shadow:0 2px 0 #c3915a;font-weight:800}
+.churro-shapes svg{width:42px;height:42px;display:block}
+.churro-shapes span{font-size:11px;line-height:16px}
+.churro-shapes button:active{transform:translateY(1px);background:#ffdb9b}
+@media(max-width:849px){body[data-mode="cook"][data-food="churros"] header{height:calc(52px + env(safe-area-inset-top))}body[data-mode="cook"][data-food="churros"] .brand-title{font-size:24px}body[data-mode="cook"][data-food="churros"] .brand small{font-size:7px;margin-top:2px}body[data-mode="cook"][data-food="churros"] .round-button{width:36px;height:36px;padding:7px}body[data-mode="cook"][data-food="churros"] .hud{padding-top:4px;padding-bottom:4px}body[data-mode="cook"][data-food="churros"] .stat{height:45px}body[data-mode="cook"][data-food="churros"] .stat strong{font-size:22px}body[data-mode="cook"][data-food="churros"] .tool-actions{margin-bottom:6px}body[data-mode="cook"][data-food="churros"] .tool-actions .mini{min-height:32px}}
+@media(min-width:850px){body[data-churro-workbench="true"] aside{grid-template-columns:minmax(0,650px) minmax(240px,320px);justify-content:center;gap:18px}body[data-churro-workbench="true"] .churro-modes{grid-column:1}body[data-churro-workbench="true"] .temperature{grid-column:2}}
+@media(max-height:480px) and (orientation:landscape){body[data-mode="cook"][data-food="churros"] header{height:40px}body[data-mode="cook"][data-food="churros"] aside{width:280px}.churro-shapes svg{width:32px;height:32px}.churro-modes .mode-switch button{font-size:10px;min-height:32px}}

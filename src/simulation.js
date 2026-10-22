@@ -136,6 +136,8 @@ export function grade(s){
  if(easyPerfect){score=100;for(const row of rows)row.value=row.max;}
  if(paleSide>.35)score=Math.min(score,79);
  if(onionDarkBrown)score=Math.min(score,50);
+ // Churros alone: 1.4x normal deductions; keep perfect and forced-zero outcomes.
+ if(s.id==='churros'&&score>0&&score<100)score=Math.max(0,Math.round(100-(100-score)*1.4));
  // Keep the visible row totals in sync with the final awarded score.
  const rowTotal=rows.reduce((a,b)=>a+b.value,0);
  if(rowTotal!==score&&rowTotal>0){const scaled=rows.map(row=>row.value*score/rowTotal),floors=scaled.map(Math.floor);let remain=score-floors.reduce((a,b)=>a+b,0);const order=scaled.map((v,i)=>[v-floors[i],i]).sort((a,b)=>b[0]-a[0]);for(let i=0;i<order.length&&remain>0;i++,remain--)floors[order[i][1]]++;rows.forEach((row,i)=>row.value=floors[i]);}
