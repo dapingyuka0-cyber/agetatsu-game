@@ -51,6 +51,14 @@ function toast(t){$('#toast').textContent=t;$('#toast').classList.add('show');cl
 function enableAudio(effect){const p=audio.start();p.then(()=>{if(effect)audio.effect(effect);}).catch(()=>toast('音声を開始できませんでした。「音」から再開・テストできます。'));return p;}
 function temperature(){return `<div class="temperature"><div class="slider-column"><label for="temperature">${icon('thermometer')}油の設定温度</label><input id="temperature" class="range" type="range" min="140" max="200" step="5" value="${s.target}" aria-label="油温140度から200度"><div class="range-labels"><span>140</span><span>160</span><span>170</span><span>180</span><span>200</span></div></div><output><span id="target">${s.target}</span><small>℃</small></output></div>`;}
 function controls(){if(s.id==='churros'&&(s.stage==='prep'||s.craft.drawing))return temperature();return `${s.stage==='fry'?`<div class="tool-actions">${[['move','トングで動かす'],['baste','油をかける'],['check',s.checking?'油に戻す':'持ち上げて確認'],['stir','かき混ぜる']].map(([a,label])=>`<button class="mini" data-act="${a}">${label}</button>`).join('')}</div>`:''}<div class="gauge-wrap"><div class="gauge" role="meter" aria-label="揚げ色" aria-valuemin="0" aria-valuemax="100" id="fryGauge"><span id="gaugePointer" class="gauge-pointer">▼</span></div><div class="gauge-labels"><span>生の衣</span><b>きつね色</b><span>焦げ</span></div></div><div class="actions">${[['drop','投入',s.stage==='prep'&&s.prep===RECIPES[s.id].steps.length&&!s.prepBusy],['flip','ひっくり返す',s.stage==='fry'&&!s.paused],['lift','取り出す',s.stage==='fry']].map(([a,label,enabled])=>`<button class="action-button ${enabled?'hot':''}" data-act="${a}" ${enabled?'':'disabled'}>${icon(a)}<span>${label}</span></button>`).join('')}</div>${temperature()}`;}
+function prepInstructions(){
+ const steps=RECIPES[s.id].steps;
+ if(s.prepWork)return {text:`② 画面中央の食材を指で押したまま、手前・奥・左右になぞる（${Math.round(s.prepWork.progress*100)}%）`,hint:'食材を押したまま、手前・奥・左右になぞろう！',progress:Math.round(s.prepWork.progress*100)};
+ if(s.prepBusy)return {text:'パン粉が全体に付いています。少し待とう。',hint:'パン粉を付けています…'};
+ if(s.prep>=steps.length)return {text:'衣づけ完了！ 下の「投入」を押して油へ。',hint:'衣づけ完了！「投入」を押そう。'};
+ const step=steps[s.prep],next=steps[s.prep-1];
+ return {text:`① 下の「${s.prep+1} ${step}」ボタンを1回押す${next?`（${next}は完了！）`:''}`,hint:`下の「${s.prep+1} ${step}」を押そう。`};
+}
 function render(){
  document.body.dataset.mode=mode;document.body.dataset.stage=s.stage;document.body.dataset.food=s.id;document.body.dataset.churroWorkbench=String(mode==='cook'&&s.id==='churros'&&(s.stage==='prep'||s.craft.drawing));
  if(mode==='menu'){
@@ -63,7 +71,7 @@ function render(){
  if(explodedDish){panel.innerHTML=`<div class="stage-row"><span>爆発！ 調理終了・0点</span>${comedy.active?.type==='blast'?'':`<button class="primary" data-act="score">結果を見る →</button>`}</div>`;$('#sceneLabel').textContent=RECIPES[s.id].name+' · 調理終了';$('#hint').textContent='大爆発！ 今回は0点……。';updateUI();return;}
  const r=RECIPES[s.id];let body='';
  if(s.stage==='prep'||(s.id==='churros'&&s.craft.drawing)){
-  const labels=r.steps;body=s.id==='gyoza'?`<div class="gyoza-steps" aria-label="包む工程"><span class="${s.prep===0?'next':s.prep>0?'done':''}">① 具をのせる</span><span class="${s.prep===1?'next':s.prep>1?'done':''}">② 皮を折る</span><span class="${s.prep===2?'next':s.prep>2?'done':''}">③ ひだ <b id="gyozaPleats">${s.craft.pleats.length}/5</b></span></div>`:isCraft(s.id)?`<div class="prep-row craft-row"><strong id="craftProgress">絞り出し</strong></div>`:labels.length?`<div class="prep-row"><span>衣づけ</span>${labels.map((n,i)=>`<button class="prep-step ${s.prep>i?'done':s.prep===i?'next':''}" data-act="prep" ${s.prep===i&&!s.prepBusy?'':'disabled'}>${s.prep>i?'✓':i+1} ${n}</button>`).join('')}</div>`:'';
+  const labels=r.steps;body=s.id==='gyoza'?`<div class="gyoza-steps" aria-label="包む工程"><span class="${s.prep===0?'next':s.prep>0?'done':''}">① 具をのせる</span><span class="${s.prep===1?'next':s.prep>1?'done':''}">② 皮を折る</span><span class="${s.prep===2?'next':s.prep>2?'done':''}">③ ひだ <b id="gyozaPleats">${s.craft.pleats.length}/5</b></span></div>`:isCraft(s.id)?`<div class="prep-row craft-row"><strong id="craftProgress">絞り出し</strong></div>`:labels.length?`<div class="prep-row"><span>衣づけ</span>${labels.map((n,i)=>`<button class="prep-step ${s.prep>i?'done':s.prep===i?'next':''}" data-act="prep" ${s.prep===i&&!s.prepBusy?'':'disabled'}>${s.prep>i?'✓':i+1} ${n}</button>`).join('')}</div><div class="prep-guide" role="status"><span class="prep-guide-text"></span><div class="prep-progress" hidden><span></span></div></div>`:'';
   if(s.id==='churros')body=churroModes();
   $('#hint').textContent=s.prep<labels.length?`${labels[s.prep]}を、まんべんなく。`:'下準備完了。油に入れよう。';
  }else if(s.stage==='drain'){
@@ -88,7 +96,10 @@ function updateUI(){
  const drop=panel.querySelector('[data-act="drop"]');if(drop)drop.disabled=s.id==='churros'||s.stage!=='prep'||s.prep!==RECIPES[s.id].steps.length||s.prepBusy>0;
  if(isCraft(s.id)){if($('#craftProgress'))$('#craftProgress').textContent=s.id==='churros'?(s.craft.ready?'形ができました':'指で絞り出す'):['① 具をのせる','② 皮を折る',`③ ひだ ${s.craft.pleats.length}/5`,'下準備完了'][s.prep];if($('#gyozaPleats'))$('#gyozaPleats').textContent=`${s.craft.pleats.length}/5`;for(const [i,step] of [...panel.querySelectorAll('.gyoza-steps span')].entries()){step.classList.toggle('next',s.prep===i);step.classList.toggle('done',s.prep>i);}if($('#sugarCount'))$('#sugarCount').textContent=`${Math.round(s.sugar*100)}%`; }
  const prep=panel.querySelector('.prep-step.next');if(prep)prep.disabled=s.prepBusy>0;
- if(mode==='cook'&&s.stage==='prep')$('#hint').textContent=s.prepBusy>0?(s.prepWork?RECIPES[s.id].steps[s.prep-1]+'：食材の手前・奥・左右をなぞろう '+Math.round(s.prepWork.progress*100)+'%':'パン粉がサーーッと広がっています！'):s.prep<RECIPES[s.id].steps.length?RECIPES[s.id].steps[s.prep]+'を、まんべんなく。':'この1個を油へ。';
+ if(mode==='cook'&&s.stage==='prep'){
+  if(panel.querySelector('.prep-guide')){const guide=prepInstructions(),bar=panel.querySelector('.prep-progress');panel.querySelector('.prep-guide-text').textContent=guide.text;bar.hidden=guide.progress===undefined;if(guide.progress!==undefined)bar.firstElementChild.style.width=guide.progress+'%';$('#hint').textContent=guide.hint;}
+  else $('#hint').textContent=s.prepBusy>0?'下準備中…':s.prep<RECIPES[s.id].steps.length?RECIPES[s.id].steps[s.prep]+'を、まんべんなく。':'この1個を油へ。';
+ }
  if(mode==='cook'&&isCraft(s.id)&&(s.stage==='prep'||s.stage==='plate'))$('#hint').textContent=craftHint(s);
  for(const button of panel.querySelectorAll('[data-piece]')){const p=batch.pieces[Number(button.dataset.piece)],b=button.querySelector('small');if(b)b.textContent=({prep:p.prepBusy?'衣づけ中':'準備',fry:p.checking?'確認中':'油の中',drain:'油切り',plate:'完成'})[p.stage];}
 
@@ -116,12 +127,12 @@ function help(){showModal(`<div class="help-guide">
  <h2>遊び方</h2>
  <p class="help-lead">まずはこの3ステップ。細かい操作は下から必要な分だけ開けます。</p>
  <ol class="help-steps">
-  <li><span class="help-icon">🥣</span><div><b>食材を選んで準備</b><small>食材を選び、画面の案内どおりに下準備します。</small></div></li>
+  <li><span class="help-icon">🥣</span><div><b>食材を選んで準備</b><small>衣づけは下の工程ボタンを押してから、画面中央の食材をなぞります。</small></div></li>
   <li><span class="help-icon">🍳</span><div><b>油に入れて揚げる</b><small>温度を決めて投入。色を見ながら、頃合いで裏返します。</small></div></li>
   <li><span class="help-icon">🍽️</span><div><b>取り出して結果を見る</b><small>取り出したら仕上げ。完成後に得点を確認しましょう。</small></div></li>
  </ol>
  <h3 class="help-subhead">操作ガイド</h3>
- <details><summary>衣の付け方</summary><p>粉や卵は、食材の上を指でなぞって付けます。パン粉はボタンを1回押すと全体に付きます。</p></details>
+ <details open><summary>衣の付け方（小麦粉・卵・パン粉）</summary><ol><li>下にある「1 小麦粉」を<b>1回押す</b>。ボタンを押すだけでは進みません。</li><li>画面中央の食材の上に指を置き、<b>押したまま手前・奥・左右になぞる</b>。進み具合が100%になるまで続けます。食材の周りの台では進みません。</li><li>「2 卵」が押せるようになったら同じように進める。「3 パン粉」は<b>ボタンを1回押すだけ</b>で付きます。</li></ol><p>進まないときは、今の工程ボタンを押したか確認し、食材の上から指を動かしてください。1か所を連続でタップするだけでは衣は広がりません。</p></details>
  <details><summary>揚げている間の操作</summary><ul><li><b>トングで動かす／かき混ぜる：</b>位置を変えて揚げムラを減らします。</li><li><b>油をかける：</b>上側にも火を通します。</li><li><b>持ち上げて確認：</b>色を見られます。確認中は加熱が止まります。</li><li><b>ひっくり返す：</b>裏面を揚げます。画面の色やゲージを目安にしましょう。</li></ul></details>
  <details><summary>取り出した後の油切り</summary><p>「取り出す」を押すと、自動で金網へ移ります。むずかしい食材は少し油を切ってから進めます。揚げ餃子は2秒で完了表示になり、皿に移さず「採点へ」を押します。</p></details>
  <details><summary>揚げ餃子を作る</summary><p>左のスプーンを皮の中央へ運びます。皮の奥側のふちから手前へなぞって折り、光る5つの目印をタップ。包めたら「投入」を押します。</p></details>
